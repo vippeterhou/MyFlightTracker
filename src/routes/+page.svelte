@@ -65,16 +65,23 @@
 	}
 
 	const POLL_INTERVAL_MS = 10 * 60 * 1000;
+	const RELOAD_BUFFER_MS = 30 * 1000; // wait 30s after expected poll before reloading
 	let now = $state(Date.now());
 	$effect(() => {
 		const t = setInterval(() => (now = Date.now()), 1000);
 		return () => clearInterval(t);
 	});
 
+	$effect(() => {
+		if (!data.lastChecked) return;
+		const reloadAt = new Date(data.lastChecked).getTime() + POLL_INTERVAL_MS + RELOAD_BUFFER_MS;
+		if (now >= reloadAt) window.location.reload();
+	});
+
 	let nextRefresh = $derived(() => {
 		if (!data.lastChecked) return null;
 		const diff = new Date(data.lastChecked).getTime() + POLL_INTERVAL_MS - now;
-		if (diff <= 0) return 'soon';
+		if (diff <= 0) return null;
 		const m = Math.floor(diff / 60000);
 		const s = Math.floor((diff % 60000) / 1000);
 		return `${m}:${s.toString().padStart(2, '0')}`;
@@ -91,6 +98,8 @@
 		<div class="header-right">
 			{#if nextRefresh()}
 				<span class="refresh-hint">Next refresh in {nextRefresh()}</span>
+			{:else if data.lastChecked}
+				<span class="refresh-hint">Refreshing...</span>
 			{/if}
 			<button class="btn" onclick={() => (showForm = !showForm)}>
 				{showForm ? 'Cancel' : '+ Track Flight'}
