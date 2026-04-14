@@ -35,6 +35,18 @@ set_secrets() {
     --app "$app"
 }
 
+deploy_web() {
+  echo "→ Deploying web app..."
+  fly deploy
+  echo "  ✓ https://$WEB_APP.fly.dev"
+}
+
+deploy_worker() {
+  echo "→ Deploying worker..."
+  fly deploy --config fly.worker.toml
+  echo "  ✓ Worker deployed"
+}
+
 if [ "$1" == "--setup" ]; then
   echo "=== First-time setup ==="
 
@@ -57,29 +69,30 @@ if [ "$1" == "--setup" ]; then
   npm run db:push
 
   echo ""
-  echo "→ Deploying web app..."
-  fly deploy
+  deploy_web
 
   echo ""
-  echo "→ Deploying worker..."
-  fly deploy --config fly.worker.toml
+  deploy_worker
 
   echo ""
   echo "✓ Setup complete!"
-  echo "  Web app: https://$WEB_APP.fly.dev"
 
 else
-  echo "=== Deploying ==="
+  echo "What would you like to deploy?"
+  echo "  1) Web app only"
+  echo "  2) Worker only"
+  echo "  3) Both"
+  echo ""
+  read -p "Choice [1/2/3]: " choice
 
   echo ""
-  echo "→ Deploying web app..."
-  fly deploy
-
-  echo ""
-  echo "→ Deploying worker..."
-  fly deploy --config fly.worker.toml
+  case $choice in
+    1) deploy_web ;;
+    2) deploy_worker ;;
+    3) deploy_web && echo "" && deploy_worker ;;
+    *) echo "Invalid choice. Exiting."; exit 1 ;;
+  esac
 
   echo ""
   echo "✓ Done!"
-  echo "  Web app: https://$WEB_APP.fly.dev"
 fi
