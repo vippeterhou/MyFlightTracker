@@ -1,3 +1,1 @@
 # MyFlightTracker
-
-Test text

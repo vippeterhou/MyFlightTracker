@@ -1,0 +1,14 @@
+app = "myflighttracker-worker"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "worker/Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+
+# No HTTP service — this is a background worker only
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

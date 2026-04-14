@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model TrackedFlight {
+  id        String   @id @default(cuid())
+  flightId  String
+  date      DateTime
+  label     String?
+  createdAt DateTime @default(now())
+
+  status FlightStatus?
+}
+
+model FlightStatus {
+  id              String        @id @default(cuid())
+  trackedFlightId String        @unique
+  trackedFlight   TrackedFlight @relation(fields: [trackedFlightId], references: [id], onDelete: Cascade)
+
+  status           String
+  departureAirport String?
+  arrivalAirport   String?
+  departureTz      String?
+  arrivalTz        String?
+  departureGate    String?
+  arrivalGate      String?
+  boardingAt       DateTime?
+  scheduledDep     DateTime?
+  estimatedDep     DateTime?
+  actualDep        DateTime?
+  wheelsOff        DateTime?
+  wheelsOn         DateTime?
+  scheduledArr     DateTime?
+  estimatedArr     DateTime?
+  actualArr        DateTime?
+  aircraftType     String?
+  baggageClaim     String?
+
+  lastChecked DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
