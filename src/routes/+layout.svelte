@@ -1,9 +1,13 @@
 <script lang="ts">
+	import { navHint } from '$lib/stores/navHint';
 	let { children } = $props();
 </script>
 
 <nav>
 	<a href="/" class="brand">✈️ MyFlightTracker</a>
+	{#if $navHint}
+		<span class="nav-hint">{$navHint}</span>
+	{/if}
 </nav>
 
 <main>
@@ -32,19 +36,25 @@
 	nav {
 		background: white;
 		border-bottom: 1px solid #e5e7eb;
-		padding: 0 20px;
-		height: 52px;
+		padding: 8px 20px;
 		display: flex;
+		flex-direction: column;
 		align-items: center;
+		justify-content: center;
+		gap: 2px;
 		position: sticky;
 		top: 0;
 		z-index: 100;
 	}
 
+	.nav-hint {
+		font-size: 0.72rem;
+		color: #9ca3af;
+	}
+
 	.brand {
 		font-size: 1.1rem;
 		font-weight: 700;
-		color: #111827;
 		transition: opacity 0.15s;
 	}
 

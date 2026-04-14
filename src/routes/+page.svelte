@@ -1,5 +1,6 @@
 <script lang="ts">
 	import FlightCard from '$lib/components/FlightCard.svelte';
+	import { navHint } from '$lib/stores/navHint';
 	import type { PageData } from './$types';
 	import type { TrackedFlight } from '$lib/types';
 
@@ -86,6 +87,12 @@
 		const s = Math.floor((diff % 60000) / 1000);
 		return `${m}:${s.toString().padStart(2, '0')}`;
 	});
+
+	$effect(() => {
+		const r = nextRefresh();
+		navHint.set(r ? `Next refresh in ${r}` : data.lastChecked ? 'Refreshing...' : null);
+		return () => navHint.set(null);
+	});
 </script>
 
 <svelte:head>
@@ -94,17 +101,9 @@
 
 <div class="page">
 	<header>
-		<h1>✈️ MyFlightTracker</h1>
-		<div class="header-right">
-			{#if nextRefresh()}
-				<span class="refresh-hint">Next refresh in {nextRefresh()}</span>
-			{:else if data.lastChecked}
-				<span class="refresh-hint">Refreshing...</span>
-			{/if}
-			<button class="btn" onclick={() => (showForm = !showForm)}>
-				{showForm ? 'Cancel' : '+ Track Flight'}
-			</button>
-		</div>
+		<button class="btn" onclick={() => (showForm = !showForm)}>
+			{showForm ? 'Cancel' : '+ Track Flight'}
+		</button>
 	</header>
 
 	{#if showForm}
@@ -156,26 +155,7 @@
 	.page {}
 
 	header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
 		margin-bottom: 28px;
-	}
-
-	.header-right {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-	}
-
-	.refresh-hint {
-		font-size: 0.8rem;
-		color: #9ca3af;
-	}
-
-	h1 {
-		font-size: 1.75rem;
-		font-weight: 700;
 	}
 
 	.add-form {
