@@ -1,14 +1,19 @@
-app = "myflighttracker-worker"
-primary_region = "sjc"
+# fly.toml app configuration file generated for myflighttracker-worker on 2026-04-15T00:04:22+08:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'myflighttracker-worker'
+primary_region = 'sjc'
 
 [build]
-  dockerfile = "worker/Dockerfile"
+  dockerfile = 'worker/Dockerfile'
 
 [env]
-  NODE_ENV = "production"
+  NODE_ENV = 'production'
 
-# No HTTP service — this is a background worker only
 [[vm]]
-  memory = "256mb"
-  cpu_kind = "shared"
+  memory = '256mb'
+  cpu_kind = 'shared'
   cpus = 1
+  memory_mb = 256
