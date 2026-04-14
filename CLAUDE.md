@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Commit style
+Do not add Co-Authored-By lines to commits.
+
 ## Commands
 
 ```bash
@@ -32,25 +35,23 @@ npm run build
 Two independently deployed services share one PostgreSQL database:
 
 **Web app** (`src/`) — SvelteKit + TypeScript, deployed via `Dockerfile` + `fly.toml`
-- API routes under `src/routes/api/` handle CRUD for tracked flights and an SSE stream for live position
-- Pages: `/` (dashboard), `/flights/[id]` (map + timeline)
-- `src/lib/server/` holds shared server-only utilities (db, aeroapi, opensky, telegram) — these are also imported directly by the worker using relative paths
+- API routes under `src/routes/api/` handle CRUD for tracked flights
+- Pages: `/` (dashboard), `/flights/[id]` (detail + timeline)
+- `src/lib/server/` holds shared server-only utilities (db, aeroapi, telegram, poll)
 
 **Worker** (`worker/`) — plain Node.js/TypeScript, deployed via `worker/Dockerfile` + `fly.worker.toml`
-- Two independent `setInterval` loops: status polling (AeroAPI, every 2 min) and position polling (OpenSky, every 30s)
+- Single polling loop: status polling (AeroAPI, every 10 min)
 - `worker/poller.ts` owns all polling logic and dispatches Telegram notifications on status transitions
 - Run locally with `npm run worker`
 
 **Data flow:**
 1. User adds a flight (flightId + date) via the dashboard → stored in `TrackedFlight` table
-2. Worker polls AeroAPI for status; on change, upserts `FlightStatus` and sends Telegram message
-3. When airborne, worker also polls OpenSky and appends rows to `Position` table
-4. Flight detail page opens SSE connection to `/api/position/[id]` which streams latest positions from DB every 30s → Leaflet map updates live
+2. Web app immediately polls AeroAPI once on add (`src/lib/server/poll.ts`)
+3. Worker polls AeroAPI every 10 min; on status change, upserts `FlightStatus` and sends Telegram message
 
 ## Key external APIs
 
-- **AeroAPI** (`src/lib/server/aeroapi.ts`) — flight status. Auth via `x-apikey` header using `AEROAPI_KEY`. Free tier: 500 req/month.
-- **OpenSky** (`src/lib/server/opensky.ts`) — live aircraft position by callsign. No auth required.
+- **AeroAPI** (`src/lib/server/aeroapi.ts`) — flight status. Auth via `x-apikey` header using `AEROAPI_KEY`. Free tier: 500 req/month, 10 QPM. Rate limiter enforces 6.5s between calls.
 - **Telegram Bot API** (`src/lib/server/telegram.ts`) — notifications. Requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
 
 ## Environment variables
