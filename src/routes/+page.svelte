@@ -83,8 +83,8 @@
 
 	$effect(() => {
 		const r = nextRefresh();
-		if (r) navHint.set(`Next refresh in ${r}`);
-		else if (data.lastChecked) navHint.set('Refresh page for latest status');
+		if (r) navHint.set(`Next poll in ${r}`);
+		else if (data.lastChecked) navHint.set('Refresh to update');
 		else navHint.set(null);
 		return () => navHint.set(null);
 	});

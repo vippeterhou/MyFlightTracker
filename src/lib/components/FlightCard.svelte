@@ -24,6 +24,12 @@
 	let status = $derived(flight.status?.status ?? 'unknown');
 	let color = $derived(STATUS_COLOR[status] ?? '#6b7280');
 
+	let dateLabel = $derived(
+		new Date(flight.date).toLocaleDateString('en-US', {
+			weekday: 'short', month: 'short', day: 'numeric',
+		})
+	);
+
 	function fmtTime(d: string | null | undefined, tz?: string | null) {
 		if (!d) return null;
 		return new Date(d).toLocaleTimeString('en-US', {
@@ -99,6 +105,8 @@
 			</div>
 		{/if}
 
+		<div class="date">{dateLabel}</div>
+
 		{#if info()}
 			<div class="eta"><span class="eta-label">{info()!.label}</span> {info()!.value}</div>
 		{/if}
@@ -164,6 +172,12 @@
 		font-size: 0.9rem;
 		color: #374151;
 		font-weight: 500;
+	}
+
+	.date {
+		font-size: 0.8rem;
+		color: #9ca3af;
+		margin-top: 2px;
 	}
 
 	.eta {
