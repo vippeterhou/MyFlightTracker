@@ -2,6 +2,9 @@ import { db } from '$lib/server/db';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-	const flights = await db.trackedFlight.findMany({ include: { status: true } });
-	return { flights };
+	const logs = await db.pollLog.findMany({
+		orderBy: { timestamp: 'desc' },
+		take: 200,
+	});
+	return { logs };
 };

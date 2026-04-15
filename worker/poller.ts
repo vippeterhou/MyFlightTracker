@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { getFlightByIdent, mapAeroStatus } from '../src/lib/server/aeroapi.js';
 import { sendMessage, buildNotification } from '../src/lib/server/telegram.js';
+import { logger } from '../src/lib/server/logger.js';
 
 const db = new PrismaClient();
 
@@ -30,7 +31,7 @@ export async function pollFlightStatuses() {
 		if (sched) {
 			const hoursUntil = (sched.getTime() - now) / (1000 * 60 * 60);
 			if (hoursUntil > 4) {
-				console.log(`[poller] skipping ${f.flightId} — departs in ${hoursUntil.toFixed(1)}h`);
+				logger.info(`Skipping — departs in ${hoursUntil.toFixed(1)}h`, f.flightId);
 				return false;
 			}
 		}
@@ -39,17 +40,17 @@ export async function pollFlightStatuses() {
 	});
 
 	if (active.length === 0) {
-		console.log('[poller] no active flights to poll');
+		await logger.info('No active flights to poll');
 		return;
 	}
 
-	console.log(`[poller] checking ${active.length} flight(s)...`);
+	await logger.info(`Polling ${active.length} flight(s)`);
 
 	for (const flight of active) {
 		try {
 			const aero = await getFlightByIdent(flight.flightId, flight.date);
 			if (!aero) {
-				console.log(`[poller] no data for ${flight.flightId}`);
+				await logger.warn('No data returned from AeroAPI', flight.flightId);
 				continue;
 			}
 
@@ -86,8 +87,9 @@ export async function pollFlightStatuses() {
 				update: statusData,
 			});
 
+			await logger.info(`Status: ${prevStatus ?? 'new'} → ${newStatus}`, flight.flightId);
+
 			if (prevStatus !== newStatus && NOTIFY_STATUSES.has(newStatus)) {
-				console.log(`[poller] ${flight.flightId}: ${prevStatus ?? 'new'} → ${newStatus}`);
 				const msg = buildNotification(flight.flightId, newStatus, {
 					label: flight.label,
 					from: aero.origin?.code_iata,
@@ -99,9 +101,10 @@ export async function pollFlightStatuses() {
 					baggageClaim: statusData.baggageClaim,
 				});
 				await sendMessage(msg);
+				await logger.info(`Telegram notification sent: ${newStatus}`, flight.flightId);
 			}
 		} catch (err) {
-			console.error(`[poller] error for ${flight.flightId}:`, err);
+			await logger.error(`${(err as Error).message}`, flight.flightId);
 		}
 	}
 }

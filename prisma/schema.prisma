@@ -18,6 +18,16 @@ model TrackedFlight {
   status FlightStatus?
 }
 
+model PollLog {
+  id        String   @id @default(cuid())
+  timestamp DateTime @default(now())
+  level     String   // 'info' | 'warn' | 'error'
+  flightId  String?
+  message   String
+
+  @@index([timestamp])
+}
+
 model FlightStatus {
   id              String        @id @default(cuid())
   trackedFlightId String        @unique

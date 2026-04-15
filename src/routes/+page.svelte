@@ -1,6 +1,5 @@
 <script lang="ts">
 	import FlightCard from '$lib/components/FlightCard.svelte';
-	import { navHint } from '$lib/stores/navHint';
 	import type { PageData } from './$types';
 	import type { TrackedFlight } from '$lib/types';
 
@@ -65,29 +64,6 @@
 		localFlights = allFlights.filter((f) => f.id !== id);
 	}
 
-	const POLL_INTERVAL_MS = 10 * 60 * 1000;
-	let now = $state(Date.now());
-	$effect(() => {
-		const t = setInterval(() => (now = Date.now()), 1000);
-		return () => clearInterval(t);
-	});
-
-	let nextRefresh = $derived(() => {
-		if (!data.lastChecked) return null;
-		const diff = new Date(data.lastChecked).getTime() + POLL_INTERVAL_MS - now;
-		if (diff <= 0) return null;
-		const m = Math.floor(diff / 60000);
-		const s = Math.floor((diff % 60000) / 1000);
-		return `${m}:${s.toString().padStart(2, '0')}`;
-	});
-
-	$effect(() => {
-		const r = nextRefresh();
-		if (r) navHint.set(`Next poll in ${r}`);
-		else if (data.lastChecked) navHint.set('Refresh to update');
-		else navHint.set(null);
-		return () => navHint.set(null);
-	});
 </script>
 
 <svelte:head>
