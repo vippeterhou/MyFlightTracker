@@ -11,6 +11,7 @@
 	});
 
 	let hint = $derived(() => {
+		if (data.activeCount === 0) return 'No active flights';
 		if (!data.lastChecked) return null;
 		const diff = new Date(data.lastChecked).getTime() + POLL_INTERVAL_MS - now;
 		if (diff <= 0) return 'Refresh to update';

@@ -40,11 +40,10 @@ export async function pollFlightStatuses() {
 	});
 
 	if (active.length === 0) {
-		await logger.info('No active flights to poll');
 		return;
 	}
 
-	await logger.info(`Polling ${active.length} flight(s)`);
+	await logger.info(`Polling ${active.map(f => f.flightId).join(', ')}`);
 
 	for (const flight of active) {
 		try {

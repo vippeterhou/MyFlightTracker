@@ -8,6 +8,26 @@
 		error: '#ef4444',
 	};
 
+	type Filter = 'all' | 'status' | 'telegram' | 'errors';
+	let activeFilter = $state<Filter>('all');
+
+	const FILTERS: { id: Filter; label: string }[] = [
+		{ id: 'all',      label: 'All' },
+		{ id: 'status',   label: 'Status changes' },
+		{ id: 'telegram', label: 'Telegram' },
+		{ id: 'errors',   label: 'Errors' },
+	];
+
+	let filtered = $derived(data.logs.filter((log) => {
+		if (activeFilter === 'status') {
+			const m = log.message.match(/^Status: (.+) → (.+)$/);
+			return !!m && m[1] !== m[2];
+		}
+		if (activeFilter === 'telegram') return log.message.startsWith('Telegram notification sent');
+		if (activeFilter === 'errors')   return log.level === 'error';
+		return true;
+	}));
+
 	function fmt(d: string) {
 		return new Date(d).toLocaleString('en-US', {
 			month: 'short', day: 'numeric',
@@ -24,17 +44,29 @@
 	<a href="/" class="back">← All flights</a>
 	<h1>Poll Logs</h1>
 
-	{#if data.logs.length === 0}
-		<p class="empty">No logs yet — the worker hasn't run.</p>
+	<div class="filters">
+		{#each FILTERS as f}
+			<button
+				class="filter-btn"
+				class:active={activeFilter === f.id}
+				onclick={() => activeFilter = f.id}
+			>{f.label}</button>
+		{/each}
+	</div>
+
+	{#if filtered.length === 0}
+		<p class="empty">{data.logs.length === 0 ? "No logs yet — the worker hasn't run." : 'No matching logs.'}</p>
 	{:else}
 		<div class="log-list">
-			{#each data.logs as log}
+			{#each filtered as log}
 				<div class="row">
 					<span class="ts">{fmt(log.timestamp)}</span>
-					{#if log.flightId}
-						<span class="flight">{log.flightId}</span>
-					{/if}
-					<span class="msg" style="color: {LEVEL_COLOR[log.level] ?? '#111827'}">{log.message}</span>
+					<div class="body">
+						{#if log.flightId}
+							<span class="flight">{log.flightId}</span>
+						{/if}
+						<span class="msg" style="color: {LEVEL_COLOR[log.level] ?? '#111827'}">{log.message}</span>
+					</div>
 				</div>
 			{/each}
 		</div>
@@ -62,6 +94,35 @@
 		margin-bottom: 20px;
 	}
 
+	.filters {
+		display: flex;
+		gap: 6px;
+		flex-wrap: wrap;
+		margin-bottom: 16px;
+	}
+
+	.filter-btn {
+		padding: 4px 12px;
+		border-radius: 999px;
+		border: 1px solid #e5e7eb;
+		background: white;
+		color: #6b7280;
+		font-size: 0.78rem;
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+
+	.filter-btn:hover {
+		border-color: #9ca3af;
+		color: #111827;
+	}
+
+	.filter-btn.active {
+		background: #111827;
+		border-color: #111827;
+		color: white;
+	}
+
 	.log-list {
 		display: flex;
 		flex-direction: column;
@@ -72,8 +133,8 @@
 
 	.row {
 		display: flex;
-		gap: 12px;
-		align-items: baseline;
+		flex-direction: column;
+		gap: 2px;
 		background: white;
 		padding: 8px 12px;
 		border-radius: 6px;
@@ -81,8 +142,14 @@
 
 	.ts {
 		color: #9ca3af;
-		white-space: nowrap;
-		flex-shrink: 0;
+		font-size: 0.72rem;
+	}
+
+	.body {
+		display: flex;
+		gap: 8px;
+		align-items: baseline;
+		flex-wrap: wrap;
 	}
 
 	.flight {
@@ -90,7 +157,6 @@
 		font-weight: 600;
 		white-space: nowrap;
 		flex-shrink: 0;
-		min-width: 60px;
 	}
 
 	.msg {
