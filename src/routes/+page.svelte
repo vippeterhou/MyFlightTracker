@@ -66,17 +66,10 @@
 	}
 
 	const POLL_INTERVAL_MS = 10 * 60 * 1000;
-	const RELOAD_BUFFER_MS = 30 * 1000; // wait 30s after expected poll before reloading
 	let now = $state(Date.now());
 	$effect(() => {
 		const t = setInterval(() => (now = Date.now()), 1000);
 		return () => clearInterval(t);
-	});
-
-	$effect(() => {
-		if (!data.lastChecked) return;
-		const reloadAt = new Date(data.lastChecked).getTime() + POLL_INTERVAL_MS + RELOAD_BUFFER_MS;
-		if (now >= reloadAt) window.location.reload();
 	});
 
 	let nextRefresh = $derived(() => {
@@ -90,7 +83,9 @@
 
 	$effect(() => {
 		const r = nextRefresh();
-		navHint.set(r ? `Next refresh in ${r}` : data.lastChecked ? 'Refreshing...' : null);
+		if (r) navHint.set(`Next refresh in ${r}`);
+		else if (data.lastChecked) navHint.set('Refresh page for latest status');
+		else navHint.set(null);
 		return () => navHint.set(null);
 	});
 </script>
