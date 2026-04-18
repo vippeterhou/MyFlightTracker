@@ -13,7 +13,7 @@ const NOTIFY_STATUSES = new Set([
 // Statuses where we stop polling (terminal states)
 const TERMINAL_STATUSES = new Set(['arrived', 'cancelled']);
 
-export async function pollFlightStatuses() {
+export async function pollFlightStatuses(): Promise<boolean> {
 	const flights = await db.trackedFlight.findMany({
 		include: { status: true },
 	});
@@ -40,7 +40,7 @@ export async function pollFlightStatuses() {
 	});
 
 	if (active.length === 0) {
-		return;
+		return false;
 	}
 
 	await logger.info(`Polling ${active.map(f => f.flightId).join(', ')}`);
@@ -106,4 +106,6 @@ export async function pollFlightStatuses() {
 			await logger.error(`${(err as Error).message}`, flight.flightId);
 		}
 	}
+
+	return true;
 }

@@ -1,16 +1,23 @@
 import 'dotenv/config';
 import { pollFlightStatuses } from './poller.js';
+import { logger } from '../src/lib/server/logger.js';
 
 const STATUS_INTERVAL_MS = 10 * 60 * 1000; // 10 min — AeroAPI free tier: 500 req/month
 
-console.log('[worker] starting flight tracker worker');
-
 (async () => {
+	await logger.info('Worker started');
+
 	while (true) {
+		let hasActive = false;
 		try {
-			await pollFlightStatuses();
+			hasActive = await pollFlightStatuses();
 		} catch (err) {
 			console.error('[worker] status poll failed:', err);
+			hasActive = true; // don't exit on error
+		}
+		if (!hasActive) {
+			await logger.info('Worker shutting down — no active flights');
+			process.exit(0);
 		}
 		await sleep(STATUS_INTERVAL_MS);
 	}

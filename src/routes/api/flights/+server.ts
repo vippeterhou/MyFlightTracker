@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { pollOneFlight } from '$lib/server/poll';
+import { startWorker } from '$lib/server/flyio';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {
@@ -35,6 +36,9 @@ export const POST: RequestHandler = async ({ request }) => {
 	} catch (err) {
 		console.error('[api] initial poll failed:', err);
 	}
+
+	// Start the worker if it's stopped
+	startWorker().catch((err) => console.error('[api] startWorker failed:', err));
 
 	const updated = await db.trackedFlight.findUnique({
 		where: { id: flight.id },
