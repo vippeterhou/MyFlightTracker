@@ -2,6 +2,8 @@ import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { pollOneFlight } from '$lib/server/poll';
 import { startWorker } from '$lib/server/flyio';
+import { logger } from '$lib/server/logger';
+import { sendMessage } from '$lib/server/telegram';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {
@@ -29,6 +31,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			label: label?.trim() || null,
 		},
 	});
+
+	await logger.info(`Flight added`, flight.flightId);
+	const tag = flight.label ? `${flight.flightId} · ${flight.label}` : flight.flightId;
+	sendMessage(`📋 <b>[${tag}] Tracking started</b>`).catch(() => {});
 
 	// Immediately fetch status from AeroAPI so the card shows data right away
 	try {

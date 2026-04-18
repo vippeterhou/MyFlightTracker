@@ -28,6 +28,13 @@ export function buildNotification(
 		from?: string | null;
 		to?: string | null;
 		gate?: string | null;
+		scheduledDep?: Date | string | null;
+		actualDep?: Date | string | null;
+		estimatedDep?: Date | string | null;
+		departureTz?: string | null;
+		wheelsOff?: Date | string | null;
+		wheelsOn?: Date | string | null;
+		scheduledArr?: Date | string | null;
 		estimatedArr?: Date | string | null;
 		actualArr?: Date | string | null;
 		arrivalTz?: string | null;
@@ -37,6 +44,7 @@ export function buildNotification(
 	const tag = opts.label ? `${flightId} · ${opts.label}` : flightId;
 	const route = opts.from && opts.to ? `${opts.from} → ${opts.to}` : '';
 	const arrTime = opts.actualArr ?? opts.estimatedArr;
+	const depTime = opts.actualDep ?? opts.estimatedDep;
 
 	const lines: string[] = [];
 
@@ -52,13 +60,35 @@ export function buildNotification(
 	};
 
 	lines.push(headers[status] ?? `ℹ️ <b>[${tag}]</b> ${status}`);
-	if (route) lines.push(route);
-	if (opts.gate && status === 'boarding') lines.push(`Gate ${opts.gate}`);
-	if (arrTime && ['airborne', 'landed'].includes(status)) {
-		lines.push(`ETA: ${formatTime(arrTime, opts.arrivalTz)}`);
-	}
-	if (opts.baggageClaim && status === 'arrived') {
-		lines.push(`Baggage: ${opts.baggageClaim}`);
+
+	if (status === 'boarding') {
+		if (route) lines.push(route);
+		if (opts.gate) lines.push(`Gate ${opts.gate}`);
+		if (depTime) lines.push(`Departs at ${formatTime(depTime, opts.departureTz)}`);
+	} else if (status === 'departed') {
+		if (depTime) lines.push(`Departed at ${formatTime(depTime, opts.departureTz)}`);
+		if (route) lines.push(route);
+	} else if (status === 'airborne') {
+		if (opts.wheelsOff) lines.push(`Wheels off at ${formatTime(opts.wheelsOff, opts.departureTz)}`);
+		if (route) lines.push(route);
+		if (arrTime) lines.push(`ETA: ${formatTime(arrTime, opts.arrivalTz)}`);
+	} else if (status === 'landed') {
+		if (opts.wheelsOn) lines.push(`Landed at ${formatTime(opts.wheelsOn, opts.arrivalTz)}`);
+		if (route) lines.push(route);
+	} else if (status === 'arrived') {
+		if (route) lines.push(route);
+		const depTime2 = opts.actualDep ?? opts.estimatedDep;
+		if (depTime2) {
+			const sched = opts.scheduledDep ? ` (sched ${formatTime(opts.scheduledDep, opts.departureTz)})` : '';
+			lines.push(`Departed: ${formatTime(depTime2, opts.departureTz)}${sched}`);
+		}
+		if (arrTime) {
+			const sched = opts.scheduledArr ? ` (sched ${formatTime(opts.scheduledArr, opts.arrivalTz)})` : '';
+			lines.push(`Arrived: ${formatTime(arrTime, opts.arrivalTz)}${sched}`);
+		}
+		if (opts.baggageClaim) lines.push(`Baggage: ${opts.baggageClaim}`);
+	} else {
+		if (route) lines.push(route);
 	}
 
 	return lines.join('\n');
