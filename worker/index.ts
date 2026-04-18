@@ -5,7 +5,7 @@ import { logger } from '../src/lib/server/logger.js';
 const STATUS_INTERVAL_MS = 10 * 60 * 1000; // 10 min — AeroAPI free tier: 500 req/month
 
 (async () => {
-	await logger.info('Worker started');
+	await logger.info('Worker started — will shut down when no active flights remain');
 
 	while (true) {
 		let hasActive = false;
