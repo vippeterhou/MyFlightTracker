@@ -8,16 +8,10 @@ const STATUS_INTERVAL_MS = 10 * 60 * 1000; // 10 min — AeroAPI free tier: 500 
 	await logger.info('Worker started — will shut down when no active flights remain');
 
 	while (true) {
-		let hasActive = false;
 		try {
-			hasActive = await pollFlightStatuses();
+			await pollFlightStatuses();
 		} catch (err) {
 			console.error('[worker] status poll failed:', err);
-			hasActive = true; // don't exit on error
-		}
-		if (!hasActive) {
-			await logger.info('Worker shutting down — no active flights');
-			process.exit(0);
 		}
 		await sleep(STATUS_INTERVAL_MS);
 	}
