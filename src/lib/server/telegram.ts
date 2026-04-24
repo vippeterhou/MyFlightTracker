@@ -77,16 +77,14 @@ export function buildNotification(
 		if (route) lines.push(route);
 	} else if (status === 'arrived') {
 		if (route) lines.push(route);
-		const depTime2 = opts.actualDep ?? opts.estimatedDep;
-		if (depTime2) {
-			const sched = opts.scheduledDep ? ` (sched ${formatTime(opts.scheduledDep, opts.departureTz)})` : '';
-			lines.push(`Departed: ${formatTime(depTime2, opts.departureTz)}${sched}`);
-		}
-		if (arrTime) {
-			const sched = opts.scheduledArr ? ` (sched ${formatTime(opts.scheduledArr, opts.arrivalTz)})` : '';
-			lines.push(`Arrived: ${formatTime(arrTime, opts.arrivalTz)}${sched}`);
-		}
 		if (opts.baggageClaim) lines.push(`Baggage: ${opts.baggageClaim}`);
+		const depTime2 = opts.actualDep ?? opts.estimatedDep;
+		const actualDep = depTime2 ? formatTime(depTime2, opts.departureTz) : null;
+		const actualArr = arrTime ? formatTime(arrTime, opts.arrivalTz) : null;
+		const schedDep = opts.scheduledDep ? formatTime(opts.scheduledDep, opts.departureTz) : null;
+		const schedArr = opts.scheduledArr ? formatTime(opts.scheduledArr, opts.arrivalTz) : null;
+		if (actualDep || actualArr) lines.push(`Actual: ${actualDep ?? '?'} → ${actualArr ?? '?'}`);
+		if (schedDep || schedArr) lines.push(`Sched:  ${schedDep ?? '?'} → ${schedArr ?? '?'}`);
 	} else {
 		if (route) lines.push(route);
 	}

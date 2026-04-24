@@ -20,6 +20,7 @@
 
 	let filtered = $derived(data.logs.filter((log) => {
 		if (activeFilter === 'status') {
+			if (log.message === 'Flight added') return true;
 			const m = log.message.match(/^Status: (.+) → (.+)$/);
 			return !!m && m[1] !== m[2];
 		}
@@ -161,6 +162,7 @@
 
 	.msg {
 		flex: 1;
+		white-space: pre-line;
 	}
 
 	.empty {

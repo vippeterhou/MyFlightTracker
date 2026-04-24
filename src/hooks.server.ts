@@ -7,4 +7,4 @@ const last = await db.pollLog.findFirst({
 });
 
 const reason = last ? 'woke from suspension' : 'first boot';
-logger.info(`App started (${reason}) — will auto-suspend after ~5 min of inactivity (shutdown not logged)`);
+logger.info(`App started · ${reason}\nAuto-suspends after ~5 min of inactivity`);
