@@ -63,6 +63,33 @@
 	function isCurrent(step: string) {
 		return status?.status === step;
 	}
+
+	let now = $state(Date.now());
+	$effect(() => {
+		if (status?.wheelsOff && !status.wheelsOn) {
+			const id = setInterval(() => { now = Date.now(); }, 1000);
+			return () => clearInterval(id);
+		}
+	});
+
+	function airDuration(): string | null {
+		if (!status?.wheelsOff) return null;
+		const off = new Date(status.wheelsOff).getTime();
+		const inFlight = !status.wheelsOn;
+		const on = inFlight ? now : new Date(status.wheelsOn!).getTime();
+		const ms = on - off;
+		if (ms <= 0) return null;
+		const h = Math.floor(ms / 3600000);
+		const m = Math.floor((ms % 3600000) / 60000);
+		const s = Math.floor((ms % 60000) / 1000);
+		if (inFlight) {
+			const time = h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+			return `In flight · ${time}`;
+		} else {
+			const time = h > 0 ? `${h}h ${m}m` : `${m}m`;
+			return `Air time · ${time}`;
+		}
+	}
 </script>
 
 {#if status?.status === 'cancelled'}
@@ -106,6 +133,12 @@
 							<span class="timestamp">
 								<span class="t-label">Sched</span> {fmt(times.scheduled, times.tz)}
 							</span>
+						{/if}
+						{#if step === 'airborne'}
+							{@const dur = airDuration()}
+							{#if dur}
+								<span class="air-duration">{dur}</span>
+							{/if}
 						{/if}
 					{/if}
 				</div>
@@ -229,5 +262,12 @@
 		color: #9ca3af;
 		font-weight: 400;
 		min-width: 38px;
+	}
+
+	.air-duration {
+		font-size: 0.78rem;
+		color: #6b7280;
+		font-style: italic;
+		margin-top: 2px;
 	}
 </style>
