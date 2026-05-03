@@ -3,5 +3,5 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	const flights = await db.trackedFlight.findMany({ include: { status: true } });
-	return { flights };
+	return { flights: JSON.parse(JSON.stringify(flights)) };
 };

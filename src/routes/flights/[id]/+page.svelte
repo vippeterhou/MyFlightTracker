@@ -103,8 +103,6 @@
 </div>
 
 <style>
-	.page {}
-
 	.back {
 		display: inline-block;
 		margin-bottom: 20px;

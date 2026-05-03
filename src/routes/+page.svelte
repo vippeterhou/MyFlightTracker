@@ -123,8 +123,6 @@
 </div>
 
 <style>
-	.page {}
-
 	header {
 		margin-bottom: 28px;
 	}

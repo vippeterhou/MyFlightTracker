@@ -10,5 +10,5 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	if (!flight) throw error(404, 'Flight not found');
 
-	return { flight };
+	return { flight: JSON.parse(JSON.stringify(flight)) };
 };
