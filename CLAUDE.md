@@ -32,7 +32,7 @@ npm run build
 
 ## Architecture
 
-Two independently deployed services share one PostgreSQL database:
+Two independently deployed services share one Supabase (PostgreSQL) database:
 
 **Web app** (`src/`) — SvelteKit + TypeScript, deployed via `Dockerfile` + `fly.toml`
 - API routes under `src/routes/api/` handle CRUD for tracked flights
@@ -81,18 +81,6 @@ FLY_WORKER_APP=       # Worker app name, e.g. myflighttracker-worker
 
 Pushing to `main` triggers `.github/workflows/fly-deploy.yml` which deploys both apps automatically (`flyctl deploy --remote-only` for web, then worker).
 
-```bash
-# First-time setup
-fly auth login
-fly postgres create --name myflighttracker-db
-fly launch --no-deploy          # sets up web app
-fly secrets set DATABASE_URL="..." AEROAPI_KEY="..." TELEGRAM_BOT_TOKEN="..." TELEGRAM_CHAT_ID="..." FLY_API_TOKEN="..." FLY_WORKER_APP="myflighttracker-worker"
-fly deploy
-
-# Worker (separate app)
-fly launch --config fly.worker.toml --no-deploy
-fly secrets set DATABASE_URL="..." AEROAPI_KEY="..." TELEGRAM_BOT_TOKEN="..." TELEGRAM_CHAT_ID="..." --app myflighttracker-worker
-fly deploy --config fly.worker.toml
-```
+For first-time setup instructions see README.md.
 
 Web app Dockerfile runs `prisma db push` on startup (before `node build`) to apply schema changes on deploy.
