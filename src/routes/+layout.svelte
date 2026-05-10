@@ -3,35 +3,33 @@
 
 	let { children, data }: { children: any; data: LayoutData } = $props();
 
-	const POLL_INTERVAL_MS = 10 * 60 * 1000;
 	let now = $state(Date.now());
 	$effect(() => {
-		const t = setInterval(() => (now = Date.now()), 1000);
+		const t = setInterval(() => (now = Date.now()), 60000);
 		return () => clearInterval(t);
 	});
 
-	let hint = $derived(() => {
-		if (data.activeCount === 0) return 'No active flights';
-		if (!data.lastChecked) return null;
-		const diff = new Date(data.lastChecked).getTime() + POLL_INTERVAL_MS - now;
-		if (diff <= 0) return 'Refresh to update';
-		const m = Math.floor(diff / 60000);
-		const s = Math.floor((diff % 60000) / 1000);
-		return `Next poll in ${m}:${s.toString().padStart(2, '0')}`;
+	let tooltip = $derived.by(() => {
+		if (!data.lastChecked) return 'Never polled';
+		const mins = Math.round((now - new Date(data.lastChecked).getTime()) / 60000);
+		if (mins < 1) return 'Updated just now';
+		if (mins === 1) return 'Updated 1 min ago';
+		return `Updated ${mins} mins ago`;
 	});
+
+	let active = $derived(data.activeCount > 0);
 </script>
 
-<nav>
-	<div class="nav-center">
-		<a href="/" class="brand">✈️ MyFlightTracker</a>
-		{#if hint()}
-			<span class="nav-hint">{hint()}</span>
-		{/if}
-	</div>
-	<a href="/logs" class="nav-logs">Logs</a>
-</nav>
-
 <main>
+	<header>
+		<a href="/" class="brand">✈️ MyFlightTracker</a>
+		<div class="nav-right">
+			<span class="status-dot-wrap" data-tooltip={tooltip}>
+				<span class="status-dot" class:active></span>
+			</span>
+			<a href="/logs" class="nav-logs">Logs</a>
+		</div>
+	</header>
 	{@render children()}
 </main>
 
@@ -54,28 +52,17 @@
 		text-decoration: none;
 	}
 
-	nav {
-		background: white;
-		border-bottom: 1px solid #e5e7eb;
-		padding: 8px 20px;
-		display: flex;
+	header {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
 		align-items: center;
-		justify-content: center;
-		position: sticky;
-		top: 0;
-		z-index: 100;
-	}
-
-	.nav-center {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 2px;
-		flex: 1;
+		padding: 20px 0 16px;
+		margin-bottom: 8px;
 	}
 
 	.brand {
-		font-size: 1.1rem;
+		grid-column: 2;
+		font-size: 1.6rem;
 		font-weight: 700;
 		transition: opacity 0.15s;
 	}
@@ -84,16 +71,61 @@
 		opacity: 0.7;
 	}
 
-	.nav-hint {
-		font-size: 0.72rem;
-		color: #9ca3af;
+	.nav-right {
+		grid-column: 3;
+		justify-self: end;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.status-dot-wrap {
+		position: relative;
+		display: flex;
+		align-items: center;
+		cursor: default;
+	}
+
+	.status-dot-wrap::after {
+		content: attr(data-tooltip);
+		position: absolute;
+		right: 0;
+		top: calc(100% + 8px);
+		background: #1f2937;
+		color: #f9fafb;
+		font-size: 0.75rem;
+		white-space: nowrap;
+		padding: 4px 8px;
+		border-radius: 5px;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.15s;
+	}
+
+	.status-dot-wrap:hover::after {
+		opacity: 1;
+	}
+
+	.status-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: #d1d5db;
+	}
+
+	.status-dot.active {
+		background: #22c55e;
+		animation: pulse 2s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+		50% { box-shadow: 0 0 0 5px rgba(34, 197, 94, 0); }
 	}
 
 	.nav-logs {
 		font-size: 0.85rem;
 		color: #9ca3af;
-		position: absolute;
-		right: 20px;
 		transition: color 0.15s;
 	}
 
@@ -104,6 +136,6 @@
 	main {
 		max-width: 1100px;
 		margin: 0 auto;
-		padding: 28px 16px;
+		padding: 0 16px 28px;
 	}
 </style>
