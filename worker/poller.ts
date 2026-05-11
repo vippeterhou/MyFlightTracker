@@ -18,16 +18,10 @@ export async function pollFlightStatuses(): Promise<boolean> {
 		include: { status: true },
 	});
 
-	const nonTerminal = flights.filter(
-		(f) => !TERMINAL_STATUSES.has(f.status?.status ?? '')
-	);
-
-	if (nonTerminal.length === 0) {
-		return false;
-	}
-
 	const now = Date.now();
-	const active = nonTerminal.filter((f) => {
+	const active = flights.filter((f) => {
+		if (TERMINAL_STATUSES.has(f.status?.status ?? '')) return false;
+
 		// If already in-progress (has a non-scheduled status), always poll
 		const s = f.status?.status;
 		if (s && s !== 'scheduled') return true;
@@ -37,7 +31,7 @@ export async function pollFlightStatuses(): Promise<boolean> {
 		if (sched) {
 			const hoursUntil = (sched.getTime() - now) / (1000 * 60 * 60);
 			if (hoursUntil > 4) {
-				await logger.info(`Skipping — departs in ${hoursUntil.toFixed(1)}h`, f.flightId);
+				logger.info(`Skipping — departs in ${hoursUntil.toFixed(1)}h`, f.flightId);
 				return false;
 			}
 		}
@@ -46,8 +40,7 @@ export async function pollFlightStatuses(): Promise<boolean> {
 	});
 
 	if (active.length === 0) {
-		await logger.info('No flights in polling window — waiting');
-		return true;
+		return false;
 	}
 
 	await logger.info(`Polling ${active.map(f => f.flightId).join(', ')}`);
@@ -117,7 +110,7 @@ export async function pollFlightStatuses(): Promise<boolean> {
 				await logger.info(`Telegram notification sent: ${newStatus}`, flight.flightId);
 			}
 		} catch (err) {
-			await logger.error((err as Error).message, flight.flightId);
+			await logger.error(`${(err as Error).message}`, flight.flightId);
 		}
 	}
 
