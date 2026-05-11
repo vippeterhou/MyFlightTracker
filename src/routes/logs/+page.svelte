@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
 
@@ -25,6 +26,7 @@
 				workerError = json.message ?? 'Unknown error';
 			} else {
 				workerState = json.state;
+				await invalidateAll(); // sync layout dot
 			}
 		} catch {
 			workerError = 'Request failed';

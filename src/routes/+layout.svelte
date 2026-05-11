@@ -4,20 +4,38 @@
 	let { children, data }: { children: any; data: LayoutData } = $props();
 
 	let now = $state(Date.now());
+	let lastChecked = $state<string | null>(null);
+	let workerRunning = $state(false);
+
+	// Sync from server data on load and after any invalidation
 	$effect(() => {
-		const t = setInterval(() => (now = Date.now()), 60000);
+		lastChecked = data.lastChecked as string | null;
+		workerRunning = data.workerState === 'running';
+	});
+
+	// Poll every 60s for live updates between page loads
+	$effect(() => {
+		const t = setInterval(async () => {
+			now = Date.now();
+			try {
+				const res = await fetch('/api/status');
+				if (res.ok) {
+					const status = await res.json();
+					lastChecked = status.lastChecked;
+					workerRunning = status.workerState === 'running';
+				}
+			} catch {}
+		}, 60000);
 		return () => clearInterval(t);
 	});
 
 	let tooltip = $derived.by(() => {
-		if (!data.lastChecked) return 'Never polled';
-		const mins = Math.round((now - new Date(data.lastChecked).getTime()) / 60000);
+		if (!lastChecked) return 'Never polled';
+		const mins = Math.round((now - new Date(lastChecked).getTime()) / 60000);
 		if (mins < 1) return 'Updated just now';
 		if (mins === 1) return 'Updated 1 min ago';
 		return `Updated ${mins} mins ago`;
 	});
-
-	let active = $derived(data.workerState === 'running');
 </script>
 
 <main>
@@ -25,7 +43,7 @@
 		<a href="/" class="brand">✈️ MyFlightTracker</a>
 		<div class="nav-right">
 			<span class="status-dot-wrap" data-tooltip={tooltip}>
-				<span class="status-dot" class:active></span>
+				<span class="status-dot" class:active={workerRunning}></span>
 			</span>
 			<a href="/logs" class="nav-logs">Logs</a>
 		</div>
