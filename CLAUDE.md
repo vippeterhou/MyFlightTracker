@@ -39,7 +39,7 @@ Two independently deployed services share one Supabase (PostgreSQL) database:
 - Pages: `/` (dashboard), `/flights/[id]` (detail + timeline), `/logs` (poll log viewer)
 - `src/lib/server/` holds shared server-only utilities (db, aeroapi, telegram, poll)
 - `src/lib/components/` — `FlightCard.svelte` (dashboard card), `FlightTimeline.svelte` (detail timeline)
-- Layout (`src/routes/+layout.svelte`) shows a status dot with last-updated tooltip using `lastChecked` + `activeCount` from layout server load
+- Layout (`src/routes/+layout.svelte`) shows a status dot (green = worker running) with last-updated tooltip using `lastChecked` + `workerState` from layout server load
 
 **Worker** (`worker/`) — plain Node.js/TypeScript, deployed via `worker/Dockerfile` + `fly.worker.toml`
 - Runs continuously 24/7; loops every 10 min
@@ -56,6 +56,7 @@ Two independently deployed services share one Supabase (PostgreSQL) database:
 
 - **AeroAPI** (`src/lib/server/aeroapi.ts`) — flight status. Auth via `x-apikey` header using `AEROAPI_KEY`. Free tier: 500 req/month, 10 QPM. Rate limiter enforces 6.5s between calls.
 - **Telegram Bot API** (`src/lib/server/telegram.ts`) — notifications. Requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. Only fires on status transitions; excludes 'scheduled'.
+- **Fly.io Machines API** (`src/lib/server/flyio.ts`) — reads worker machine state and supports manual start/stop from the `/logs` page. Requires `FLY_API_TOKEN` and `FLY_WORKER_APP`. Returns `'unknown'` silently if vars are absent (dev).
 
 ## Database
 
@@ -71,6 +72,8 @@ DATABASE_URL=
 AEROAPI_KEY=
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
+FLY_API_TOKEN=       # Fly.io auth token — for worker state/start/stop from /logs
+FLY_WORKER_APP=      # Worker app name, e.g. myflighttracker-worker
 ```
 
 ## Deployment (Fly.io)

@@ -17,7 +17,7 @@
 		return `Updated ${mins} mins ago`;
 	});
 
-	let active = $derived(data.activeCount > 0);
+	let active = $derived(data.workerState === 'running');
 </script>
 
 <main>

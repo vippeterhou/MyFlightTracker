@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
 
@@ -7,6 +8,30 @@
 		warn:  '#d97706',
 		error: '#ef4444',
 	};
+
+	// Worker control — initialized from server, then managed client-side
+	let workerState = $state(untrack(() => data.workerState));
+	let workerLoading = $state(false);
+	let workerError = $state<string | null>(null);
+
+	async function toggleWorker() {
+		workerLoading = true;
+		workerError = null;
+		try {
+			const method = workerState === 'running' ? 'DELETE' : 'POST';
+			const res = await fetch('/api/worker', { method });
+			const json = await res.json();
+			if (!res.ok) {
+				workerError = json.message ?? 'Unknown error';
+			} else {
+				workerState = json.state;
+			}
+		} catch {
+			workerError = 'Request failed';
+		} finally {
+			workerLoading = false;
+		}
+	}
 
 	type Filter = 'all' | 'status' | 'telegram' | 'errors';
 	let activeFilter = $state<Filter>('all');
@@ -43,7 +68,28 @@
 
 <div class="page">
 	<a href="/" class="back">← All flights</a>
-	<h1>Poll Logs</h1>
+
+	<div class="page-header">
+		<h1>Poll Logs</h1>
+		<div class="worker-control">
+			<span class="worker-label">
+				{workerState === 'running' ? 'Worker running' : workerState === 'stopped' ? 'Worker stopped' : 'Worker unknown'}
+			</span>
+			<button
+				class="toggle"
+				class:on={workerState === 'running'}
+				class:loading={workerLoading}
+				onclick={toggleWorker}
+				disabled={workerLoading || workerState === 'unknown'}
+				aria-label={workerState === 'running' ? 'Stop worker' : 'Start worker'}
+			>
+				<span class="toggle-thumb"></span>
+			</button>
+			{#if workerError}
+				<span class="worker-error">{workerError}</span>
+			{/if}
+		</div>
+	</div>
 
 	<div class="filters">
 		{#each FILTERS as f}
@@ -89,10 +135,74 @@
 
 	.back:hover { color: #111827; }
 
+	.page-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 20px;
+	}
+
 	h1 {
 		font-size: 1.5rem;
 		font-weight: 700;
-		margin-bottom: 20px;
+	}
+
+	.worker-control {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+
+	.worker-label {
+		font-size: 0.8rem;
+		color: #6b7280;
+	}
+
+	.toggle {
+		position: relative;
+		width: 40px;
+		height: 22px;
+		border-radius: 999px;
+		border: none;
+		background: #d1d5db;
+		cursor: pointer;
+		transition: background 0.25s;
+		flex-shrink: 0;
+		padding: 0;
+	}
+
+	.toggle.on {
+		background: #22c55e;
+	}
+
+	.toggle:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+
+	.toggle.loading {
+		opacity: 0.6;
+	}
+
+	.toggle-thumb {
+		position: absolute;
+		top: 3px;
+		left: 3px;
+		width: 16px;
+		height: 16px;
+		border-radius: 50%;
+		background: white;
+		box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+		transition: transform 0.25s;
+	}
+
+	.toggle.on .toggle-thumb {
+		transform: translateX(18px);
+	}
+
+	.worker-error {
+		font-size: 0.75rem;
+		color: #ef4444;
 	}
 
 	.filters {

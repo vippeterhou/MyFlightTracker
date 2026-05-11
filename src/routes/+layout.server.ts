@@ -1,20 +1,17 @@
 import { db } from '$lib/server/db';
+import { getWorkerState } from '$lib/server/flyio';
 import type { LayoutServerLoad } from './$types';
 
-const TERMINAL = ['arrived', 'cancelled'];
-
 export const load: LayoutServerLoad = async () => {
-	const [last, activeCount] = await Promise.all([
+	const [last, workerState] = await Promise.all([
 		db.flightStatus.findFirst({
 			orderBy: { lastChecked: 'desc' },
 			select: { lastChecked: true },
 		}),
-		db.trackedFlight.count({
-			where: { status: { status: { notIn: TERMINAL } } },
-		}),
+		getWorkerState(),
 	]);
 	return {
 		lastChecked: last?.lastChecked ?? null,
-		activeCount,
+		workerState,
 	};
 };
