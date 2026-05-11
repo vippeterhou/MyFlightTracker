@@ -10,38 +10,36 @@ const NOTIFY_STATUSES = new Set([
 	'boarding', 'departed', 'airborne', 'landed', 'arrived', 'cancelled', 'delayed', 'diverted',
 ]);
 
-// Statuses where we stop polling (terminal states)
 const TERMINAL_STATUSES = new Set(['arrived', 'cancelled']);
 
-export async function pollFlightStatuses(): Promise<boolean> {
+export async function pollFlightStatuses(): Promise<void> {
 	const flights = await db.trackedFlight.findMany({
 		include: { status: true },
 	});
 
 	const now = Date.now();
-	const active = flights.filter((f) => {
-		if (TERMINAL_STATUSES.has(f.status?.status ?? '')) return false;
+	const active: typeof flights = [];
+	for (const f of flights) {
+		if (TERMINAL_STATUSES.has(f.status?.status ?? '')) continue;
 
 		// If already in-progress (has a non-scheduled status), always poll
 		const s = f.status?.status;
-		if (s && s !== 'scheduled') return true;
+		if (s && s !== 'scheduled') { active.push(f); continue; }
 
 		// For scheduled/unknown flights: only poll within 4 hours of scheduled departure
 		const sched = f.status?.scheduledDep;
 		if (sched) {
 			const hoursUntil = (sched.getTime() - now) / (1000 * 60 * 60);
 			if (hoursUntil > 4) {
-				logger.info(`Skipping — departs in ${hoursUntil.toFixed(1)}h`, f.flightId);
-				return false;
+				await logger.info(`Skipping — departs in ${hoursUntil.toFixed(1)}h`, f.flightId);
+				continue;
 			}
 		}
 
-		return true;
-	});
-
-	if (active.length === 0) {
-		return false;
+		active.push(f);
 	}
+
+	if (active.length === 0) return;
 
 	await logger.info(`Polling ${active.map(f => f.flightId).join(', ')}`);
 
@@ -110,9 +108,7 @@ export async function pollFlightStatuses(): Promise<boolean> {
 				await logger.info(`Telegram notification sent: ${newStatus}`, flight.flightId);
 			}
 		} catch (err) {
-			await logger.error(`${(err as Error).message}`, flight.flightId);
+			await logger.error((err as Error).message, flight.flightId);
 		}
 	}
-
-	return true;
 }
