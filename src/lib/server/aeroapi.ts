@@ -58,6 +58,36 @@ export async function getFlightByIdent(flightId: string, date: Date): Promise<Ae
 }
 
 
+export interface TrackPoint {
+	timestamp: string;
+	lat: number;
+	lon: number;
+	altitude: number;
+	groundspeed: number;
+	heading: number;
+}
+
+export async function getFlightTrack(faFlightId: string): Promise<TrackPoint[]> {
+	const apiKey = process.env.AEROAPI_KEY;
+	if (!apiKey) throw new Error('AEROAPI_KEY not set');
+
+	const url = `${AEROAPI_BASE}/flights/${encodeURIComponent(faFlightId)}/track`;
+	const res = await aeroFetch(url, apiKey);
+
+	if (res.status === 404) return [];
+	if (!res.ok) throw new Error(`AeroAPI ${res.status}: ${await res.text()}`);
+
+	const data = await res.json();
+	return (data.positions ?? []).map((p: Record<string, unknown>) => ({
+		timestamp: p.timestamp as string,
+		lat: p.latitude as number,
+		lon: p.longitude as number,
+		altitude: p.altitude as number,
+		groundspeed: p.groundspeed as number,
+		heading: p.heading as number,
+	}));
+}
+
 export function mapAeroStatus(flight: AeroFlight): string {
 	if (flight.cancelled) return 'cancelled';
 	if (flight.diverted) return 'diverted';

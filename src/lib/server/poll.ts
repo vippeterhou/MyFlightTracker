@@ -31,6 +31,7 @@ export async function pollOneFlight(id: string): Promise<void> {
 		actualArr: aero.actual_in ? new Date(aero.actual_in) : null,
 		aircraftType: aero.aircraft_type ?? null,
 		baggageClaim: aero.baggage_claim ?? null,
+		faFlightId: aero.fa_flight_id ?? null,
 	};
 
 	await db.flightStatus.upsert({

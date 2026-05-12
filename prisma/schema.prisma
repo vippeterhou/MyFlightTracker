@@ -51,6 +51,7 @@ model FlightStatus {
   actualArr        DateTime?
   aircraftType     String?
   baggageClaim     String?
+  faFlightId       String?
 
   lastChecked DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

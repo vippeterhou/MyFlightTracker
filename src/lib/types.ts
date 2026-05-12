@@ -30,6 +30,7 @@ export interface FlightStatus {
 	actualArr: string | null;
 	aircraftType: string | null;
 	baggageClaim: string | null;
+	faFlightId: string | null;
 	lastChecked: string;
 	updatedAt: string;
 }
