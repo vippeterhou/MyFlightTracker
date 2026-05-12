@@ -1,12 +1,16 @@
 const AEROAPI_BASE = 'https://aeroapi.flightaware.com/aeroapi';
 
+// Capture native fetch at module load time so SvelteKit's DEV-mode SSR patch
+// (applied during options.root.render) never intercepts server-side AeroAPI calls.
+const _fetch = fetch;
+
 // Rate limiter: max 10 QPM → enforce ≥6.5 s between calls
 let _lastAeroCall = 0;
 async function aeroFetch(url: string, apiKey: string): Promise<Response> {
 	const gap = 6500 - (Date.now() - _lastAeroCall);
 	if (gap > 0) await new Promise((r) => setTimeout(r, gap));
 	_lastAeroCall = Date.now();
-	return fetch(url, { headers: { 'x-apikey': apiKey } });
+	return _fetch(url, { headers: { 'x-apikey': apiKey } });
 }
 
 export interface AeroFlight {
