@@ -33,7 +33,9 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	await logger.info(`Flight added`, flight.flightId);
 	const tag = flight.label ? `${flight.flightId} · ${flight.label}` : flight.flightId;
-	sendMessage(`📋 <b>[${tag}] Tracking started</b>`).catch(() => {});
+	sendMessage(`📋 <b>[${tag}] Tracking started</b>`).catch((err: Error) =>
+		logger.warn(`Telegram notification failed: ${err.message}`, flight.flightId)
+	);
 
 	// Immediately fetch status from AeroAPI so the card shows data right away
 	try {

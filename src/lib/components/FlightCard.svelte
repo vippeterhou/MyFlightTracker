@@ -56,7 +56,7 @@
 		return `${h}h ${m}m`;
 	}
 
-	let info = $derived((): { label: string; value: string } | null => {
+	let info = $derived.by((): { label: string; value: string } | null => {
 		const s = flight.status;
 		if (!s) return null;
 		switch (status) {
@@ -107,8 +107,8 @@
 
 		<div class="date">{dateLabel}</div>
 
-		{#if info()}
-			<div class="eta"><span class="eta-label">{info()!.label}</span> {info()!.value}</div>
+		{#if info}
+			<div class="eta"><span class="eta-label">{info.label}</span> {info.value}</div>
 		{/if}
 	</a>
 	<button class="delete" onclick={handleDelete} aria-label="Remove flight">×</button>
