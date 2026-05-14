@@ -72,6 +72,9 @@
 
 <div class="page">
 	<header>
+		<div class="intro">
+			<p class="tagline">Track flights before your departure. Get notified from gate to gate on every status change — departed, airborne, landed, and more.</p>
+		</div>
 		<button class="btn" onclick={() => (showForm = !showForm)}>
 			{showForm ? 'Cancel' : '+ Track Flight'}
 		</button>
@@ -125,6 +128,20 @@
 <style>
 	header {
 		margin-bottom: 28px;
+	}
+
+	.intro {
+		display: flex;
+		justify-content: center;
+		margin-bottom: 20px;
+	}
+
+	.tagline {
+		font-size: 0.95rem;
+		color: #6b7280;
+		max-width: 480px;
+		line-height: 1.6;
+		text-align: center;
 	}
 
 	.add-form {
