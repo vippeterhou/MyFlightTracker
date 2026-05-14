@@ -3,25 +3,19 @@
 
 	let { children, data }: { children: any; data: LayoutData } = $props();
 
-	let now = $state(Date.now());
-	let lastChecked = $state<string | null>(null);
 	let workerRunning = $state(false);
 
-	// Sync from server data on load and after any invalidation
 	$effect(() => {
-		lastChecked = data.lastChecked as string | null;
 		workerRunning = data.workerState === 'running';
 	});
 
-	// Poll every 60s for live updates between page loads
+	// Poll every 60s to keep the dot live between page loads
 	$effect(() => {
 		const t = setInterval(async () => {
-			now = Date.now();
 			try {
 				const res = await fetch('/api/status');
 				if (res.ok) {
 					const status = await res.json();
-					lastChecked = status.lastChecked;
 					workerRunning = status.workerState === 'running';
 				}
 			} catch {}
@@ -29,24 +23,17 @@
 		return () => clearInterval(t);
 	});
 
-	let tooltip = $derived.by(() => {
-		if (!lastChecked) return 'Never polled';
-		const mins = Math.round((now - new Date(lastChecked).getTime()) / 60000);
-		if (mins < 1) return 'Updated just now';
-		if (mins === 1) return 'Updated 1 min ago';
-		return `Updated ${mins} mins ago`;
-	});
+	let tooltip = $derived(workerRunning ? 'Worker running' : 'Worker stopped');
 </script>
 
 <main>
 	<header>
-		<a href="/" class="brand">✈️ MyFlightTracker</a>
-		<div class="nav-right">
+		<a href="/" class="brand">
+			✈️&nbsp; My Flight Tracker
 			<span class="status-dot-wrap" data-tooltip={tooltip}>
 				<span class="status-dot" class:active={workerRunning}></span>
 			</span>
-			<a href="/logs" class="nav-logs">Logs</a>
-		</div>
+		</a>
 	</header>
 	{@render children()}
 </main>
@@ -71,15 +58,16 @@
 	}
 
 	header {
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
-		align-items: center;
+		display: flex;
+		justify-content: center;
 		padding: 20px 0 16px;
 		margin-bottom: 8px;
 	}
 
 	.brand {
-		grid-column: 2;
+		display: inline-flex;
+		align-items: center;
+		gap: 12px;
 		font-size: 1.6rem;
 		font-weight: 700;
 		transition: opacity 0.15s;
@@ -87,14 +75,6 @@
 
 	.brand:hover {
 		opacity: 0.7;
-	}
-
-	.nav-right {
-		grid-column: 3;
-		justify-self: end;
-		display: flex;
-		align-items: center;
-		gap: 12px;
 	}
 
 	.status-dot-wrap {
@@ -107,7 +87,8 @@
 	.status-dot-wrap::after {
 		content: attr(data-tooltip);
 		position: absolute;
-		right: 0;
+		left: 50%;
+		transform: translateX(-50%);
 		top: calc(100% + 8px);
 		background: #1f2937;
 		color: #f9fafb;
@@ -139,16 +120,6 @@
 	@keyframes pulse {
 		0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
 		50% { box-shadow: 0 0 0 5px rgba(34, 197, 94, 0); }
-	}
-
-	.nav-logs {
-		font-size: 0.85rem;
-		color: #9ca3af;
-		transition: color 0.15s;
-	}
-
-	.nav-logs:hover {
-		color: #111827;
 	}
 
 	main {

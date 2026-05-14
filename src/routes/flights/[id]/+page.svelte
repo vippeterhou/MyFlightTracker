@@ -196,7 +196,7 @@
 </script>
 
 <svelte:head>
-	<title>{flight.flightId} — MyFlightTracker</title>
+	<title>{flight.flightId} — My Flight Tracker</title>
 </svelte:head>
 
 <div class="page">
