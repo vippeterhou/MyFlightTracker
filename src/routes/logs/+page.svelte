@@ -286,6 +286,8 @@
 		gap: 1px;
 		font-family: 'SF Mono', 'Fira Code', monospace;
 		font-size: 0.8rem;
+		max-height: 600px;
+		overflow-y: auto;
 	}
 
 	.row {
