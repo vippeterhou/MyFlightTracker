@@ -26,6 +26,10 @@
 	let tooltip = $derived(workerRunning ? 'Worker running' : 'Worker stopped');
 </script>
 
+<svelte:head>
+	<script type="text/javascript" id="clstr_globe" src="//clustrmaps.com/globe.js?d=bxai1VN5DnyKh3Gh0XVDYguF6CVsG92487NYGc2BQj0"></script>
+</svelte:head>
+
 <main>
 	<header>
 		<a href="/" class="brand">

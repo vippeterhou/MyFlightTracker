@@ -93,38 +93,82 @@
 		</div>
 	</div>
 
-	<div class="filters">
-		{#each FILTERS as f}
-			<button
-				class="filter-btn"
-				class:active={activeFilter === f.id}
-				onclick={() => activeFilter = f.id}
-			>{f.label}</button>
-		{/each}
-	</div>
+	<div class="body-layout">
+		<div class="logs-col">
+			<div class="filters">
+				{#each FILTERS as f}
+					<button
+						class="filter-btn"
+						class:active={activeFilter === f.id}
+						onclick={() => activeFilter = f.id}
+					>{f.label}</button>
+				{/each}
+			</div>
 
-	{#if filtered.length === 0}
-		<p class="empty">{data.logs.length === 0 ? "No logs yet — the worker hasn't run." : 'No matching logs.'}</p>
-	{:else}
-		<div class="log-list">
-			{#each filtered as log}
-				<div class="row">
-					<span class="ts">{fmt(log.timestamp)}</span>
-					<div class="body">
-						{#if log.flightId}
-							<span class="flight">{log.flightId}</span>
-						{/if}
-						<span class="msg" style="color: {LEVEL_COLOR[log.level] ?? '#111827'}">{log.message}</span>
-					</div>
+			{#if filtered.length === 0}
+				<p class="empty">{data.logs.length === 0 ? "No logs yet — the worker hasn't run." : 'No matching logs.'}</p>
+			{:else}
+				<div class="log-list">
+					{#each filtered as log}
+						<div class="row">
+							<span class="ts">{fmt(log.timestamp)}</span>
+							<div class="body">
+								{#if log.flightId}
+									<span class="flight">{log.flightId}</span>
+								{/if}
+								<span class="msg" style="color: {LEVEL_COLOR[log.level] ?? '#111827'}">{log.message}</span>
+							</div>
+						</div>
+					{/each}
 				</div>
-			{/each}
+			{/if}
 		</div>
-	{/if}
+
+		<div class="globe">
+			<iframe
+				title="Visitor globe"
+				srcdoc={`<body style="margin:0;background:transparent"><script type="text/javascript" id="clstr_globe" src="//clustrmaps.com/globe.js?d=bxai1VN5DnyKh3Gh0XVDYguF6CVsG92487NYGc2BQj0"><\/script></body>`}
+				style="border:none;background:transparent"
+				width="240"
+				height="240"
+			></iframe>
+		</div>
+	</div>
 </div>
 
 <style>
 	.page {
-		max-width: 800px;
+		max-width: 1100px;
+	}
+
+	.body-layout {
+		display: flex;
+		gap: 40px;
+		align-items: flex-start;
+	}
+
+	.logs-col {
+		flex: 0 0 480px;
+		min-width: 0;
+	}
+
+	.globe {
+		flex: 1;
+		display: flex;
+		justify-content: center;
+		align-items: flex-start;
+		padding-top: 8px;
+	}
+
+	@media (max-width: 768px) {
+		.body-layout {
+			flex-direction: column;
+		}
+
+		.logs-col {
+			flex: none;
+			width: 100%;
+		}
 	}
 
 	.back {
