@@ -169,6 +169,10 @@
 			flex: none;
 			width: 100%;
 		}
+
+		.globe {
+			width: 100%;
+		}
 	}
 
 	.back {
