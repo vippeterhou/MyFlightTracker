@@ -127,7 +127,7 @@
 		<div class="globe">
 			<iframe
 				title="Visitor globe"
-				srcdoc={`<body style="margin:0;background:transparent"><script type="text/javascript" id="clstr_globe" src="//clustrmaps.com/globe.js?d=bxai1VN5DnyKh3Gh0XVDYguF6CVsG92487NYGc2BQj0"><\/script></body>`}
+				src="/globe.html"
 				style="border:none;background:transparent"
 				width="240"
 				height="240"
