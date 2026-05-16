@@ -34,6 +34,7 @@
 				<span class="status-dot" class:active={workerRunning}></span>
 			</span>
 		</a>
+		<a href="/logs" class="nav-logs">Logs</a>
 	</header>
 	{@render children()}
 </main>
@@ -58,19 +59,33 @@
 	}
 
 	header {
-		display: flex;
-		justify-content: center;
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
 		padding: 20px 0 16px;
 		margin-bottom: 8px;
 	}
 
 	.brand {
+		grid-column: 2;
 		display: inline-flex;
 		align-items: center;
 		gap: 12px;
 		font-size: 1.6rem;
 		font-weight: 700;
 		transition: opacity 0.15s;
+	}
+
+	.nav-logs {
+		grid-column: 3;
+		justify-self: end;
+		font-size: 0.85rem;
+		color: #9ca3af;
+		transition: color 0.15s;
+	}
+
+	.nav-logs:hover {
+		color: #111827;
 	}
 
 	.brand:hover {
