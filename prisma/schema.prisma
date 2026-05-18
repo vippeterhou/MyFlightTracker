@@ -52,6 +52,7 @@ model FlightStatus {
   aircraftType     String?
   baggageClaim     String?
   faFlightId       String?
+  trackData        Json?
 
   lastChecked DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

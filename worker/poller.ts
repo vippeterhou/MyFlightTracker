@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { getFlightByIdent, mapAeroStatus } from '../src/lib/server/aeroapi.js';
+import { getFlightByIdent, getFlightTrack, mapAeroStatus } from '../src/lib/server/aeroapi.js';
 import { sendMessage, buildNotification } from '../src/lib/server/telegram.js';
 import { logger } from '../src/lib/server/logger.js';
 
@@ -54,6 +54,20 @@ export async function pollFlightStatuses(): Promise<void> {
 			const newStatus = mapAeroStatus(aero);
 			const prevStatus = flight.status?.status;
 
+			// Fetch and persist track data when flight arrives at gate
+			let trackData = undefined;
+			if (newStatus === 'arrived' && prevStatus !== 'arrived' && aero.fa_flight_id) {
+				try {
+					const track = await getFlightTrack(aero.fa_flight_id);
+					if (track.length > 0) {
+						trackData = track;
+						await logger.info(`Saved ${track.length} track points`, flight.flightId);
+					}
+				} catch (err) {
+					await logger.warn(`Failed to fetch track: ${(err as Error).message}`, flight.flightId);
+				}
+			}
+
 			const statusData = {
 				status: newStatus,
 				boardingAt: newStatus === 'boarding' && prevStatus !== 'boarding'
@@ -77,6 +91,7 @@ export async function pollFlightStatuses(): Promise<void> {
 				baggageClaim: aero.baggage_claim ?? null,
 				faFlightId: aero.fa_flight_id ?? null,
 				lastChecked: new Date(),
+				...(trackData ? { trackData } : {}),
 			};
 
 			await db.flightStatus.upsert({

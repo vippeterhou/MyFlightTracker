@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
 import { getFlightTrack, type TrackPoint } from '$lib/server/aeroapi';
+import { logger } from '$lib/server/logger';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -13,11 +14,21 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	if (!flight) throw error(404, 'Flight not found');
 
-	const faId = flight.status?.faFlightId;
-	const track: Promise<TrackPoint[]> =
-		faId && MAP_STATUSES.has(flight.status?.status ?? '')
-			? getFlightTrack(faId).catch(() => [])
-			: Promise.resolve([]);
+	// Use cached track data from DB if available, otherwise fetch from AeroAPI
+	const cached = flight.status?.trackData as TrackPoint[] | null;
+	let track: Promise<TrackPoint[]> | TrackPoint[];
+
+	if (cached && cached.length > 0) {
+		track = cached;
+	} else {
+		const faId = flight.status?.faFlightId;
+		if (faId && MAP_STATUSES.has(flight.status?.status ?? '')) {
+			await logger.info('Fetching route from AeroAPI', flight.flightId);
+			track = getFlightTrack(faId).catch(() => []);
+		} else {
+			track = Promise.resolve([]);
+		}
+	}
 
 	return { flight: JSON.parse(JSON.stringify(flight)), track };
 };
