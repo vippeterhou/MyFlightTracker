@@ -42,7 +42,7 @@ Two independently deployed services share one Supabase (PostgreSQL) database:
 - Layout (`src/routes/+layout.svelte`) shows a status dot (green = worker running) with last-updated tooltip using `lastChecked` + `workerState` from layout server load
 
 **Worker** (`worker/`) — plain Node.js/TypeScript, deployed via `worker/Dockerfile` + `fly.worker.toml`
-- Runs continuously 24/7; loops every 10 min
+- Runs continuously; loops every 10 min
 - `worker/poller.ts` owns all polling logic and dispatches Telegram notifications on status transitions
 - Skips AeroAPI calls for terminal flights ('arrived', 'cancelled') and flights departing >4 hours away (saves AeroAPI quota); otherwise polls AeroAPI each cycle
 - Run locally with `npm run worker`
@@ -51,6 +51,7 @@ Two independently deployed services share one Supabase (PostgreSQL) database:
 1. User adds a flight (flightId + date) via the dashboard → stored in `TrackedFlight` table
 2. Web app immediately polls AeroAPI once on add (`src/lib/server/poll.ts`)
 3. Worker polls AeroAPI every 10 min; on status change, upserts `FlightStatus` and sends Telegram message
+4. When a flight arrives at gate, worker fetches and persists the flight track (`trackData` JSON on `FlightStatus`) so the route map works without future API calls
 
 ## Key external APIs
 
@@ -61,6 +62,7 @@ Two independently deployed services share one Supabase (PostgreSQL) database:
 ## Database
 
 Three tables: `TrackedFlight`, `FlightStatus` (1:1 with TrackedFlight, cascade delete), `PollLog`.
+- `FlightStatus` includes a `trackData` JSON field that stores the flight's route track points (persisted on arrival so the route map works without future AeroAPI calls).
 - `PollLog` records every poll event with `level` (info/warn/error), optional `flightId`, `message`, `timestamp`. Pruned to last 500 records automatically (`src/lib/server/logger.ts`).
 - All timestamps stored as ISO strings; TypeScript types in `src/lib/types.ts` reflect this (no `Date` objects in API responses).
 
