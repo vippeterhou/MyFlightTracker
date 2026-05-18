@@ -67,7 +67,7 @@
 </script>
 
 <svelte:head>
-	<title>My Flight Tracker</title>
+	<title>Flight Tracker</title>
 </svelte:head>
 
 <div class="page">

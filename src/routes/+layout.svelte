@@ -29,7 +29,7 @@
 <main>
 	<header>
 		<a href="/" class="brand">
-			✈️&nbsp; My Flight Tracker
+			✈️&nbsp; Flight Tracker
 			<span class="status-dot-wrap" data-tooltip={tooltip}>
 				<span class="status-dot" class:active={workerRunning}></span>
 			</span>
