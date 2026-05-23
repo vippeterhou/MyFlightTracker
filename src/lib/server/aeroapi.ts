@@ -1,3 +1,5 @@
+import { logger } from './logger';
+
 const AEROAPI_BASE = 'https://aeroapi.flightaware.com/aeroapi';
 
 // Capture native fetch at module load time so SvelteKit's DEV-mode SSR patch
@@ -75,6 +77,7 @@ export async function getFlightTrack(faFlightId: string): Promise<TrackPoint[]> 
 	const apiKey = process.env.AEROAPI_KEY;
 	if (!apiKey) throw new Error('AEROAPI_KEY not set');
 
+	await logger.info('Fetching route from AeroAPI', faFlightId);
 	const url = `${AEROAPI_BASE}/flights/${encodeURIComponent(faFlightId)}/track`;
 	const res = await aeroFetch(url, apiKey);
 
