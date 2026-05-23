@@ -85,16 +85,16 @@ export interface TrackPoint {
 	heading: number;
 }
 
-export async function getFlightTrack(faFlightId: string): Promise<TrackPoint[]> {
+export async function getFlightTrack(faFlightId: string, flightId?: string): Promise<TrackPoint[]> {
 	const apiKey = process.env.AEROAPI_KEY;
 	if (!apiKey) throw new Error('AEROAPI_KEY not set');
 
-	await logger.info('Fetching route from AeroAPI', faFlightId);
+	await logger.info('Fetching route from AeroAPI', flightId ?? faFlightId);
 	const url = `${AEROAPI_BASE}/flights/${encodeURIComponent(faFlightId)}/track`;
 
 	const t0 = Date.now();
 	const res = await aeroFetch(url, apiKey);
-	logApiCall('route', faFlightId, Date.now() - t0, res.ok || res.status === 404, res.status);
+	logApiCall('route', flightId ?? faFlightId, Date.now() - t0, res.ok || res.status === 404, res.status);
 
 	if (res.status === 404) return [];
 	if (!res.ok) throw new Error(`AeroAPI ${res.status}: ${await res.text()}`);

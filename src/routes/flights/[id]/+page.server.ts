@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	} else {
 		const faId = flight.status?.faFlightId;
 		if (faId && MAP_STATUSES.has(flight.status?.status ?? '')) {
-			track = getFlightTrack(faId).catch(() => []);
+			track = getFlightTrack(faId, flight.flightId).catch(() => []);
 		} else {
 			track = Promise.resolve([]);
 		}

@@ -58,7 +58,7 @@ export async function pollFlightStatuses(): Promise<void> {
 			let trackData = undefined;
 			if (newStatus === 'arrived' && prevStatus !== 'arrived' && aero.fa_flight_id) {
 				try {
-					const track = await getFlightTrack(aero.fa_flight_id);
+					const track = await getFlightTrack(aero.fa_flight_id, flight.flightId);
 					if (track.length > 0) {
 						trackData = track;
 						await logger.info(`Saved ${track.length} track points`, flight.flightId);
