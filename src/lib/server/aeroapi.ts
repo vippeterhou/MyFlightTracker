@@ -1,6 +1,16 @@
+import { PrismaClient } from '@prisma/client';
 import { logger } from './logger';
 
 const AEROAPI_BASE = 'https://aeroapi.flightaware.com/aeroapi';
+const _db = new PrismaClient();
+
+function logApiCall(endpoint: string, flightId: string | null, durationMs: number, success: boolean, httpStatus: number | null) {
+	_db.apiCall.create({
+		data: { endpoint, flightId, durationMs, success, httpStatus },
+	}).catch((err) => {
+		console.error('[aeroapi] Failed to log API call:', err);
+	});
+}
 
 // Capture native fetch at module load time so SvelteKit's DEV-mode SSR patch
 // (applied during options.root.render) never intercepts server-side AeroAPI calls.
@@ -54,7 +64,9 @@ export async function getFlightByIdent(flightId: string, date: Date): Promise<Ae
 
 	const url = `${AEROAPI_BASE}/flights/${encodeURIComponent(flightId)}?start=${start}&end=${end}`;
 
+	const t0 = Date.now();
 	const res = await aeroFetch(url, apiKey);
+	logApiCall('status', flightId, Date.now() - t0, res.ok || res.status === 404, res.status);
 
 	if (res.status === 404) return null;
 	if (!res.ok) throw new Error(`AeroAPI ${res.status}: ${await res.text()}`);
@@ -79,7 +91,10 @@ export async function getFlightTrack(faFlightId: string): Promise<TrackPoint[]> 
 
 	await logger.info('Fetching route from AeroAPI', faFlightId);
 	const url = `${AEROAPI_BASE}/flights/${encodeURIComponent(faFlightId)}/track`;
+
+	const t0 = Date.now();
 	const res = await aeroFetch(url, apiKey);
+	logApiCall('route', faFlightId, Date.now() - t0, res.ok || res.status === 404, res.status);
 
 	if (res.status === 404) return [];
 	if (!res.ok) throw new Error(`AeroAPI ${res.status}: ${await res.text()}`);

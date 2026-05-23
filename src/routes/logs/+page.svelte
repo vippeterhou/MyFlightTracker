@@ -1,8 +1,16 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
+	import ApiUsageChart from '$lib/components/ApiUsageChart.svelte';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
+
+	const GRANULARITIES = [
+		{ id: 'day', label: 'Day' },
+		{ id: 'week', label: 'Week' },
+		{ id: 'month', label: 'Month' },
+	] as const;
+	let granularity = $state('day');
 
 	const LEVEL_COLOR: Record<string, string> = {
 		info:  '#6b7280',
@@ -93,6 +101,22 @@
 		</div>
 	</div>
 
+	<div class="usage-section">
+		<div class="usage-header">
+			<h2>API Usage</h2>
+			<div class="granularity-toggle">
+				{#each GRANULARITIES as g}
+					<button
+						class="filter-btn"
+						class:active={granularity === g.id}
+						onclick={() => granularity = g.id}
+					>{g.label}</button>
+				{/each}
+			</div>
+		</div>
+		<ApiUsageChart {granularity} />
+	</div>
+
 	<div class="body-layout">
 		<div class="logs-col">
 			<div class="filters">
@@ -139,6 +163,33 @@
 <style>
 	.page {
 		max-width: 1100px;
+	}
+
+	.usage-section {
+		background: white;
+		border: 1px solid #e5e7eb;
+		border-radius: 12px;
+		padding: 16px 20px;
+		margin-bottom: 24px;
+	}
+
+	.usage-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 12px;
+	}
+
+	.usage-header h2 {
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: #374151;
+		margin: 0;
+	}
+
+	.granularity-toggle {
+		display: flex;
+		gap: 6px;
 	}
 
 	.body-layout {

@@ -61,9 +61,10 @@ Two independently deployed services share one Supabase (PostgreSQL) database:
 
 ## Database
 
-Three tables: `TrackedFlight`, `FlightStatus` (1:1 with TrackedFlight, cascade delete), `PollLog`.
+Four tables: `TrackedFlight`, `FlightStatus` (1:1 with TrackedFlight, cascade delete), `PollLog`, `ApiCall`.
 - `FlightStatus` includes a `trackData` JSON field that stores the flight's route track points (persisted on arrival so the route map works without future AeroAPI calls).
 - `PollLog` records every poll event with `level` (info/warn/error), optional `flightId`, `message`, `timestamp`. Pruned to last 500 records automatically (`src/lib/server/logger.ts`).
+- `ApiCall` logs every AeroAPI call with `endpoint` ('status' | 'route'), `flightId`, `durationMs`, `success`, `httpStatus`. Logged fire-and-forget from `aeroapi.ts`. Not auto-pruned — usage history is kept long-term. Visualized on the `/logs` page via Chart.js.
 - All timestamps stored as ISO strings; TypeScript types in `src/lib/types.ts` reflect this (no `Date` objects in API responses).
 
 ## Environment variables
