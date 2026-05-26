@@ -144,10 +144,11 @@
 	}
 
 	function fillGaps(sorted: string[], gran: string): string[] {
-		if (sorted.length < 2) return sorted;
+		if (sorted.length === 0) return sorted;
 		const result: string[] = [];
 		const start = new Date(sorted[0]);
-		const end = new Date(sorted[sorted.length - 1]);
+		const now = new Date();
+		const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 		const d = new Date(start);
 		while (d <= end) {
 			result.push(d.toISOString());
