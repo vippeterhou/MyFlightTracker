@@ -88,30 +88,37 @@
 <div class="card-wrap">
 	<a href="/flights/{flight.id}" class="card">
 		<div class="top">
-			<div class="left">
-				<span class="flight-id">{flight.flightId}</span>
-				{#if flight.label}
-					<span class="label">{flight.label}</span>
-				{/if}
-			</div>
+			<span class="flight-id">{flight.flightId}</span>
+			{#if flight.label}
+				<span class="label">· {flight.label}</span>
+			{/if}
+		</div>
+
+		<div class="route-row">
+			{#if flight.status?.departureAirport}
+				<span class="route">
+					{flight.status.departureAirport} → {flight.status.arrivalAirport ?? '?'}
+				</span>
+			{/if}
 			<span class="status" style="color: {color}">
 				{status.charAt(0).toUpperCase() + status.slice(1)}
 			</span>
 		</div>
 
-		{#if flight.status?.departureAirport}
-			<div class="route">
-				{flight.status.departureAirport} → {flight.status.arrivalAirport ?? '?'}
-			</div>
-		{/if}
-
 		<div class="date">{dateLabel}</div>
 
 		{#if info}
-			<div class="eta"><span class="eta-label">{info.label}</span> {info.value}</div>
+			<div class="info">
+				<span class="eta"><span class="eta-label">{info.label}</span> {info.value}</span>
+			</div>
 		{/if}
 	</a>
-	<button class="delete" onclick={handleDelete} aria-label="Remove flight">×</button>
+	<button class="delete" onclick={handleDelete} aria-label="Remove flight">
+		<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+			<path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+			<path d="M10 11v6M14 11v6" />
+		</svg>
+	</button>
 </div>
 
 <style>
@@ -121,11 +128,11 @@
 	}
 
 	.card {
-		display: block;
+		display: flex;
+		flex-direction: column;
 		height: 100%;
 		min-height: 96px;
 		padding: 16px 18px;
-		padding-right: 40px;
 		background: white;
 		border: 1px solid #e5e7eb;
 		border-radius: 12px;
@@ -139,15 +146,9 @@
 
 	.top {
 		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
+		align-items: center;
+		gap: 6px;
 		margin-bottom: 8px;
-	}
-
-	.left {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
 	}
 
 	.flight-id {
@@ -161,17 +162,31 @@
 		color: #9ca3af;
 	}
 
+	.route-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 8px;
+		margin-bottom: 2px;
+	}
+
 	.status {
-		font-size: 0.8rem;
+		font-size: 0.9rem;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
+		margin-left: auto;
+		flex-shrink: 0;
 	}
 
 	.route {
 		font-size: 0.9rem;
 		color: #374151;
 		font-weight: 500;
+	}
+
+	.info {
+		padding-top: 0;
 	}
 
 	.date {
@@ -183,7 +198,6 @@
 	.eta {
 		font-size: 0.8rem;
 		color: #6b7280;
-		margin-top: 4px;
 	}
 
 	.eta-label {
@@ -199,17 +213,22 @@
 		right: 10px;
 		background: none;
 		border: none;
-		font-size: 1.1rem;
-		color: #d1d5db;
+		color: #9ca3af;
 		cursor: pointer;
-		padding: 4px 6px;
+		padding: 5px;
 		border-radius: 4px;
-		transition: color 0.15s;
-		line-height: 1;
+		transition: opacity 0.15s, color 0.15s, background 0.15s;
+		line-height: 0;
 		z-index: 1;
+		opacity: 0;
+	}
+
+	.card-wrap:hover .delete {
+		opacity: 1;
 	}
 
 	.delete:hover {
 		color: #ef4444;
+		background: rgba(239, 68, 68, 0.1);
 	}
 </style>
