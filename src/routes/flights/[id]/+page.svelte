@@ -7,6 +7,41 @@
 	let { data }: { data: PageData } = $props();
 	let flight = $derived(data.flight as TrackedFlight);
 
+	// svelte-ignore state_referenced_locally
+	let currentLabel = $state<string | null>(flight.label ?? null);
+	let editingLabel = $state(false);
+	let labelDraft = $state('');
+	let labelSaving = $state(false);
+
+	function startEditLabel() {
+		labelDraft = currentLabel ?? '';
+		editingLabel = true;
+	}
+
+	async function saveLabel() {
+		const trimmed = labelDraft.trim();
+		if (trimmed === (currentLabel ?? '')) {
+			editingLabel = false;
+			return;
+		}
+		labelSaving = true;
+		const res = await fetch(`/api/flights/${flight.id}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ label: trimmed }),
+		});
+		if (res.ok) {
+			currentLabel = trimmed || null;
+		}
+		labelSaving = false;
+		editingLabel = false;
+	}
+
+	function handleLabelKey(e: KeyboardEvent) {
+		if (e.key === 'Enter') saveLabel();
+		if (e.key === 'Escape') editingLabel = false;
+	}
+
 	const MAP_STATUSES = new Set(['departed', 'airborne', 'landed', 'arrived', 'diverted']);
 	let showMap = $derived(MAP_STATUSES.has(flight.status?.status ?? ''));
 
@@ -205,9 +240,28 @@
 	<div class="header">
 		<div>
 			<h1>{flight.flightId}</h1>
-			{#if flight.label}
-				<p class="label">{flight.label}</p>
-			{/if}
+			<div class="label-row">
+				{#if editingLabel}
+					<input
+						class="label-input"
+						bind:value={labelDraft}
+						onkeydown={handleLabelKey}
+						onblur={saveLabel}
+						placeholder="e.g. Mom's flight"
+						disabled={labelSaving}
+						autofocus
+					/>
+				{:else if currentLabel}
+					<span class="label-text">{currentLabel}</span>
+					<button class="label-edit" onclick={startEditLabel} aria-label="Edit label">
+						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+						</svg>
+					</button>
+				{:else}
+					<button class="label-add" onclick={startEditLabel}>+ Add label</button>
+				{/if}
+			</div>
 			<p class="date">{formatDate(flight.date)}</p>
 		</div>
 
@@ -347,9 +401,61 @@
 		font-family: 'SF Mono', 'Fira Code', monospace;
 	}
 
-	.label {
-		color: #6b7280;
+	.label-row {
+		display: flex;
+		align-items: center;
+		gap: 6px;
 		margin-top: 4px;
+		height: 1.5rem;
+	}
+
+	.label-text {
+		color: #6b7280;
+		font-size: 1rem;
+		line-height: 1.5rem;
+	}
+
+	.label-edit {
+		background: none;
+		border: none;
+		color: #d1d5db;
+		cursor: pointer;
+		padding: 2px;
+		border-radius: 4px;
+		line-height: 0;
+		transition: color 0.15s;
+	}
+
+	.label-edit:hover {
+		color: #6b7280;
+	}
+
+	.label-add {
+		background: none;
+		border: none;
+		color: #9ca3af;
+		font-size: 0.875rem;
+		padding: 0;
+		cursor: pointer;
+		transition: color 0.15s;
+	}
+
+	.label-add:hover {
+		color: #6b7280;
+	}
+
+	.label-input {
+		font-size: 1rem;
+		color: #374151;
+		border: none;
+		border-bottom: 1px solid #3b82f6;
+		outline: none;
+		padding: 0;
+		margin: 0;
+		background: transparent;
+		min-width: 160px;
+		height: 1.5rem;
+		line-height: 1.5rem;
 	}
 
 	.date {
