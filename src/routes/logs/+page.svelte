@@ -117,47 +117,33 @@
 		<ApiUsageChart {granularity} />
 	</div>
 
-	<div class="body-layout">
-		<div class="logs-col">
-			<div class="filters">
-				{#each FILTERS as f}
-					<button
-						class="filter-btn"
-						class:active={activeFilter === f.id}
-						onclick={() => activeFilter = f.id}
-					>{f.label}</button>
-				{/each}
-			</div>
-
-			{#if filtered.length === 0}
-				<p class="empty">{data.logs.length === 0 ? "No logs yet — the worker hasn't run." : 'No matching logs.'}</p>
-			{:else}
-				<div class="log-list">
-					{#each filtered as log}
-						<div class="row">
-							<span class="ts">{fmt(log.timestamp)}</span>
-							<div class="body">
-								{#if log.flightId}
-									<span class="flight">{log.flightId}</span>
-								{/if}
-								<span class="msg" style="color: {LEVEL_COLOR[log.level] ?? '#111827'}">{log.message}</span>
-							</div>
-						</div>
-					{/each}
-				</div>
-			{/if}
-		</div>
-
-		<div class="globe">
-			<iframe
-				title="Visitor globe"
-				src="/globe.html"
-				style="border:none;background:transparent"
-				width="240"
-				height="240"
-			></iframe>
-		</div>
+	<div class="filters">
+		{#each FILTERS as f}
+			<button
+				class="filter-btn"
+				class:active={activeFilter === f.id}
+				onclick={() => activeFilter = f.id}
+			>{f.label}</button>
+		{/each}
 	</div>
+
+	{#if filtered.length === 0}
+		<p class="empty">{data.logs.length === 0 ? "No logs yet — the worker hasn't run." : 'No matching logs.'}</p>
+	{:else}
+		<div class="log-list">
+			{#each filtered as log}
+				<div class="row">
+					<span class="ts">{fmt(log.timestamp)}</span>
+					<div class="body">
+						{#if log.flightId}
+							<span class="flight">{log.flightId}</span>
+						{/if}
+						<span class="msg" style="color: {LEVEL_COLOR[log.level] ?? '#111827'}">{log.message}</span>
+					</div>
+				</div>
+			{/each}
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -190,40 +176,6 @@
 	.granularity-toggle {
 		display: flex;
 		gap: 6px;
-	}
-
-	.body-layout {
-		display: flex;
-		gap: 40px;
-		align-items: flex-start;
-	}
-
-	.logs-col {
-		flex: 0 0 480px;
-		min-width: 0;
-	}
-
-	.globe {
-		flex: 1;
-		display: flex;
-		justify-content: center;
-		align-items: flex-start;
-		padding-top: 8px;
-	}
-
-	@media (max-width: 768px) {
-		.body-layout {
-			flex-direction: column;
-		}
-
-		.logs-col {
-			flex: none;
-			width: 100%;
-		}
-
-		.globe {
-			width: 100%;
-		}
 	}
 
 	.back {
