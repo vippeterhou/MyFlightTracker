@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import FlightCard from '$lib/components/FlightCard.svelte';
 	import PastFlightsTimeline from '$lib/components/PastFlightsTimeline.svelte';
 	import type { PageData } from './$types';
@@ -8,7 +9,14 @@
 
 	let localFlights = $state<TrackedFlight[] | null>(null);
 	type PastView = 'grid' | 'timeline';
-	let pastView = $state<PastView>('grid');
+	let pastView = $state<PastView>(
+		(browser && sessionStorage.getItem('pastView') as PastView) || 'grid'
+	);
+
+	function setPastView(view: PastView) {
+		pastView = view;
+		sessionStorage.setItem('pastView', view);
+	}
 	const ACTIVE_STATUSES  = new Set(['boarding', 'departed', 'airborne', 'landed', 'delayed']);
 	const PAST_STATUSES    = new Set(['arrived', 'cancelled', 'diverted']);
 
@@ -131,7 +139,7 @@
 				<div class="group-header">
 					<h2 class="group-label">Past</h2>
 					<div class="view-toggle">
-						<button class="view-btn" class:active={pastView === 'grid'} onclick={() => pastView = 'grid'} aria-label="Grid view">
+						<button class="view-btn" class:active={pastView === 'grid'} onclick={() => setPastView('grid')} aria-label="Grid view">
 							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 								<rect x="3" y="3" width="7" height="7"></rect>
 								<rect x="14" y="3" width="7" height="7"></rect>
@@ -139,7 +147,7 @@
 								<rect x="14" y="14" width="7" height="7"></rect>
 							</svg>
 						</button>
-						<button class="view-btn" class:active={pastView === 'timeline'} onclick={() => pastView = 'timeline'} aria-label="Timeline view">
+						<button class="view-btn" class:active={pastView === 'timeline'} onclick={() => setPastView('timeline')} aria-label="Timeline view">
 							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 								<line x1="8" y1="6" x2="21" y2="6"></line>
 								<line x1="8" y1="12" x2="21" y2="12"></line>
