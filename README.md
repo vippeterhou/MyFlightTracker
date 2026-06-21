@@ -9,7 +9,10 @@ A personal flight tracker that monitors flight status in real time and sends Tel
 - Telegram push notifications on every status transition
 - Flight timeline with scheduled vs actual times
 - Live in-flight duration counter
-- Poll log viewer
+- Past flights timeline view with month groupings, proportional date gaps, and mini route maps
+- Route map on detail page (persisted track data, no extra API calls)
+- API usage dashboard with Chart.js charts on the logs page
+- Poll log viewer with filterable log levels (all, status, API calls, telegram, errors)
 
 ## Stack
 

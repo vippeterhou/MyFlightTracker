@@ -36,9 +36,9 @@ Two independently deployed services share one Supabase (PostgreSQL) database:
 
 **Web app** (`src/`) — SvelteKit + TypeScript, deployed via `Dockerfile` + `fly.toml`
 - API routes under `src/routes/api/` handle CRUD for tracked flights
-- Pages: `/` (dashboard), `/flights/[id]` (detail + timeline), `/logs` (poll log viewer)
+- Pages: `/` (dashboard with grid/timeline toggle for past flights), `/flights/[id]` (detail + timeline), `/logs` (poll log viewer + API usage chart)
 - `src/lib/server/` holds shared server-only utilities (db, aeroapi, telegram, poll)
-- `src/lib/components/` — `FlightCard.svelte` (dashboard card), `FlightTimeline.svelte` (detail timeline)
+- `src/lib/components/` — `FlightCard.svelte` (compact dashboard card), `FlightCardExpanded.svelte` (expanded card with mini Leaflet route map for timeline view), `PastFlightsTimeline.svelte` (timeline view with month groupings and proportional date gaps), `FlightTimeline.svelte` (detail page timeline), `ApiUsageChart.svelte` (Chart.js usage chart on /logs), `AllRoutesMap.svelte` (globe view on /logs)
 - Layout (`src/routes/+layout.svelte`) shows a status dot (green = worker running) with last-updated tooltip using `lastChecked` + `workerState` from layout server load
 
 **Worker** (`worker/`) — plain Node.js/TypeScript, deployed via `worker/Dockerfile` + `fly.worker.toml`
@@ -62,7 +62,7 @@ Two independently deployed services share one Supabase (PostgreSQL) database:
 ## Database
 
 Four tables: `TrackedFlight`, `FlightStatus` (1:1 with TrackedFlight, cascade delete), `PollLog`, `ApiCall`.
-- `FlightStatus` includes a `trackData` JSON field that stores the flight's route track points (persisted on arrival so the route map works without future AeroAPI calls).
+- `FlightStatus` includes `trackData` (JSON flight route points, persisted on arrival), `departureCity`/`arrivalCity` (city names resolved from AeroAPI origin/destination).
 - `PollLog` records every poll event with `level` (info/warn/error), optional `flightId`, `message`, `timestamp`. Pruned to last 500 records automatically (`src/lib/server/logger.ts`).
 - `ApiCall` logs every AeroAPI call with `endpoint` ('status' | 'route'), `flightId`, `durationMs`, `success`, `httpStatus`. Logged fire-and-forget from `aeroapi.ts`. Not auto-pruned — usage history is kept long-term. Visualized on the `/logs` page via Chart.js.
 - All timestamps stored as ISO strings; TypeScript types in `src/lib/types.ts` reflect this (no `Date` objects in API responses).
