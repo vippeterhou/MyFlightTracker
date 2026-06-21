@@ -12,6 +12,9 @@
 
 	let { routes }: { routes: FlightRoute[] } = $props();
 
+	type ViewMode = 'map' | 'globe';
+	let viewMode = $state<ViewMode>('map');
+
 	const COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 	const RANGES = [
@@ -159,15 +162,117 @@
 		};
 	});
 
+	const GLOBE_THEMES = [
+		{
+			id: 'blue-marble',
+			label: 'Satellite',
+			globe: '//unpkg.com/three-globe/example/img/earth-blue-marble.jpg',
+			bg: '//unpkg.com/three-globe/example/img/night-sky.png',
+		},
+		{
+			id: 'night',
+			label: 'Night',
+			globe: '//unpkg.com/three-globe/example/img/earth-night.jpg',
+			bg: '//unpkg.com/three-globe/example/img/night-sky.png',
+		},
+	];
+
+	let activeGlobeTheme = $state('blue-marble');
+	let globeThemeOpen = $state(false);
+
+	function switchGlobeTheme(id: string) {
+		activeGlobeTheme = id;
+		const theme = GLOBE_THEMES.find((t) => t.id === id);
+		if (globeInst && theme) {
+			globeInst.globeImageUrl(theme.globe);
+			globeInst.backgroundImageUrl(theme.bg || null);
+		}
+		globeThemeOpen = false;
+	}
+
+	let globeEl = $state<HTMLDivElement | undefined>(undefined);
+	let globeInst: any = null;
+
+	$effect(() => {
+		if (viewMode !== 'globe' || !globeEl || filteredRoutes.length === 0) return;
+
+		let mounted = true;
+
+		(async () => {
+			const Globe = (await import('globe.gl')).default;
+			if (!mounted || !globeEl) return;
+
+			const arcsData = filteredRoutes.map((route, i) => ({
+				startLat: route.track[0].lat,
+				startLng: route.track[0].lon,
+				endLat: route.track[route.track.length - 1].lat,
+				endLng: route.track[route.track.length - 1].lon,
+				color: COLORS[i % COLORS.length],
+				label: `${route.flightId}${route.label ? ' · ' + route.label : ''}\n${route.departureAirport ?? '?'} → ${route.arrivalAirport ?? '?'}`,
+			}));
+
+			globeInst = new Globe(globeEl)
+				.globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+				.bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
+				.backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+				.arcsData(arcsData)
+				.arcColor('color')
+				.arcLabel('label')
+				.arcDashLength(0.4)
+				.arcDashGap(0.2)
+				.arcDashAnimateTime(1500)
+				.arcStroke(0.5)
+				.width(globeEl.clientWidth)
+				.height(globeEl.clientHeight);
+
+			globeInst.pointOfView({ lat: 30, lng: -95, altitude: 2.5 });
+
+			const controls = globeInst.controls();
+			controls.autoRotate = true;
+			controls.autoRotateSpeed = 0.5;
+		})();
+
+		return () => {
+			mounted = false;
+			if (globeInst) {
+				globeInst._destructor?.();
+				globeInst = null;
+			}
+			if (globeEl) globeEl.innerHTML = '';
+		};
+	});
+
 	onDestroy(() => {
 		leafletInst?.remove();
 		leafletInst = undefined;
+		if (globeInst) {
+			globeInst._destructor?.();
+			globeInst = null;
+		}
 	});
 </script>
 
 <div class="map-card">
 	<div class="map-header">
-		<h2>Flight Routes</h2>
+		<div class="title-row">
+			<h2>Flight Routes</h2>
+			<div class="view-toggle">
+				<button class="view-btn" class:active={viewMode === 'map'} onclick={() => viewMode = 'map'} aria-label="Map view">
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+						<line x1="8" y1="2" x2="8" y2="18"></line>
+						<line x1="16" y1="6" x2="16" y2="22"></line>
+					</svg>
+				</button>
+				<button class="view-btn" class:active={viewMode === 'globe'} onclick={() => viewMode = 'globe'} aria-label="Globe view">
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<circle cx="12" cy="12" r="10"></circle>
+						<line x1="2" y1="12" x2="22" y2="12"></line>
+						<path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"></path>
+					</svg>
+				</button>
+			</div>
+		</div>
 		<div class="range-controls">
 			<div class="range-toggle">
 				{#each RANGES as r}
@@ -188,11 +293,43 @@
 	<div class="map-wrap">
 		{#if filteredRoutes.length === 0}
 			<div class="map-empty">{routes.length === 0 ? 'No route data available' : 'No flights in this period'}</div>
-		{:else}
+		{:else if viewMode === 'map'}
 			<div class="map" bind:this={mapEl}></div>
+		{:else}
+			<div class="globe" bind:this={globeEl}></div>
 		{/if}
 
-		{#if filteredRoutes.length > 0}
+		{#if filteredRoutes.length > 0 && viewMode === 'globe'}
+			<div class="layer-switcher">
+				{#if globeThemeOpen}
+					<div class="layer-panel">
+						{#each GLOBE_THEMES as theme}
+							<button
+								class="layer-option"
+								class:active={activeGlobeTheme === theme.id}
+								onclick={() => switchGlobeTheme(theme.id)}
+							>
+								<span class="theme-label">{theme.label}</span>
+							</button>
+						{/each}
+					</div>
+				{/if}
+				<button
+					class="layer-btn"
+					class:open={globeThemeOpen}
+					onclick={() => globeThemeOpen = !globeThemeOpen}
+					aria-label="Switch globe theme"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<circle cx="12" cy="12" r="10"></circle>
+						<line x1="2" y1="12" x2="22" y2="12"></line>
+						<path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"></path>
+					</svg>
+				</button>
+			</div>
+		{/if}
+
+		{#if filteredRoutes.length > 0 && viewMode === 'map'}
 			<div class="layer-switcher">
 				{#if layerOpen}
 					<div class="layer-panel">
@@ -241,11 +378,50 @@
 		margin-bottom: 12px;
 	}
 
+	.title-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+
 	h2 {
 		font-size: 0.85rem;
 		font-weight: 600;
 		color: #374151;
 		margin: 0;
+	}
+
+	.view-toggle {
+		display: flex;
+		border: 1px solid #e5e7eb;
+		border-radius: 6px;
+		overflow: hidden;
+	}
+
+	.view-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 30px;
+		height: 26px;
+		background: white;
+		border: none;
+		cursor: pointer;
+		color: #9ca3af;
+		transition: all 0.15s;
+	}
+
+	.view-btn:first-child {
+		border-right: 1px solid #e5e7eb;
+	}
+
+	.view-btn:hover {
+		color: #374151;
+	}
+
+	.view-btn.active {
+		background: #111827;
+		color: white;
 	}
 
 	.range-controls {
@@ -310,7 +486,7 @@
 		height: 360px;
 	}
 
-	.map {
+	.map, .globe {
 		height: 100%;
 		border-radius: 8px;
 		overflow: hidden;
@@ -405,6 +581,17 @@
 	.layer-btn.open {
 		background: #111827;
 		color: white;
+	}
+
+	.theme-label {
+		font-size: 0.75rem;
+		color: #374151;
+		font-weight: 500;
+		padding: 6px 12px;
+	}
+
+	.layer-option.active .theme-label {
+		color: #3b82f6;
 	}
 
 	:global(.route-tooltip) {
