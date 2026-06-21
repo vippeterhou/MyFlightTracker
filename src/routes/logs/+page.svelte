@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import ApiUsageChart from '$lib/components/ApiUsageChart.svelte';
+	import AllRoutesMap from '$lib/components/AllRoutesMap.svelte';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
 
@@ -78,6 +79,8 @@
 
 <div class="page">
 	<a href="/" class="back">← All flights</a>
+
+	<AllRoutesMap routes={data.routes} />
 
 	<div class="page-header">
 		<h1>Poll Logs</h1>
