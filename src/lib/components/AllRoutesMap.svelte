@@ -211,6 +211,16 @@
 				label: `${route.flightId}${route.label ? ' · ' + route.label : ''}\n${route.departureAirport ?? '?'} → ${route.arrivalAirport ?? '?'}`,
 			}));
 
+			const pointsData = filteredRoutes.flatMap((route, i) => {
+				const color = COLORS[i % COLORS.length];
+				const start = route.track[0];
+				const end = route.track[route.track.length - 1];
+				return [
+					{ lat: start.lat, lng: start.lon, color },
+					{ lat: end.lat, lng: end.lon, color },
+				];
+			});
+
 			const theme = GLOBE_THEMES.find((t) => t.id === activeGlobeTheme) ?? GLOBE_THEMES[0];
 
 			globeInst = new Globe(globeEl)
@@ -224,6 +234,12 @@
 				.arcDashGap(0.2)
 				.arcDashAnimateTime(1500)
 				.arcStroke(0.5)
+				.pointsData(pointsData)
+				.pointLat('lat')
+				.pointLng('lng')
+				.pointColor('color')
+				.pointAltitude(0.001)
+				.pointRadius(0.4)
 				.width(globeEl.clientWidth)
 				.height(globeEl.clientHeight);
 
