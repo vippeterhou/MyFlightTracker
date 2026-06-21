@@ -44,12 +44,13 @@
 		}
 	}
 
-	type Filter = 'all' | 'status' | 'telegram' | 'errors';
+	type Filter = 'all' | 'status' | 'api' | 'telegram' | 'errors';
 	let activeFilter = $state<Filter>('all');
 
 	const FILTERS: { id: Filter; label: string }[] = [
 		{ id: 'all',      label: 'All' },
 		{ id: 'status',   label: 'Status changes' },
+		{ id: 'api',      label: 'API calls' },
 		{ id: 'telegram', label: 'Telegram' },
 		{ id: 'errors',   label: 'Errors' },
 	];
@@ -60,6 +61,7 @@
 			const m = log.message.match(/^Status: (.+) → (.+)$/);
 			return !!m && m[1] !== m[2];
 		}
+		if (activeFilter === 'api')      return log.message.startsWith('[API]');
 		if (activeFilter === 'telegram') return log.message.startsWith('Telegram notification sent');
 		if (activeFilter === 'errors')   return log.level === 'error';
 		return true;

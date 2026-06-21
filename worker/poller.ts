@@ -41,8 +41,6 @@ export async function pollFlightStatuses(): Promise<void> {
 
 	if (active.length === 0) return;
 
-	await logger.info(`Polling ${active.map(f => f.flightId).join(', ')}`);
-
 	for (const flight of active) {
 		try {
 			const aero = await getFlightByIdent(flight.flightId, flight.date);

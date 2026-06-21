@@ -64,6 +64,7 @@ export async function getFlightByIdent(flightId: string, date: Date): Promise<Ae
 
 	const url = `${AEROAPI_BASE}/flights/${encodeURIComponent(flightId)}?start=${start}&end=${end}`;
 
+	await logger.info(`[API] Status: ${flightId}`, flightId);
 	const t0 = Date.now();
 	const res = await aeroFetch(url, apiKey);
 	logApiCall('status', flightId, Date.now() - t0, res.ok || res.status === 404, res.status);
@@ -89,7 +90,7 @@ export async function getFlightTrack(faFlightId: string, flightId?: string): Pro
 	const apiKey = process.env.AEROAPI_KEY;
 	if (!apiKey) throw new Error('AEROAPI_KEY not set');
 
-	await logger.info('Fetching route from AeroAPI', flightId ?? faFlightId);
+	await logger.info(`[API] Route: ${flightId ?? faFlightId}`, flightId ?? faFlightId);
 	const url = `${AEROAPI_BASE}/flights/${encodeURIComponent(faFlightId)}/track`;
 
 	const t0 = Date.now();
