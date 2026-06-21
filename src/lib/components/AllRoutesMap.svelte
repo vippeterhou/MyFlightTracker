@@ -211,10 +211,12 @@
 				label: `${route.flightId}${route.label ? ' · ' + route.label : ''}\n${route.departureAirport ?? '?'} → ${route.arrivalAirport ?? '?'}`,
 			}));
 
+			const theme = GLOBE_THEMES.find((t) => t.id === activeGlobeTheme) ?? GLOBE_THEMES[0];
+
 			globeInst = new Globe(globeEl)
-				.globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+				.globeImageUrl(theme.globe)
 				.bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
-				.backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+				.backgroundImageUrl(theme.bg || null)
 				.arcsData(arcsData)
 				.arcColor('color')
 				.arcLabel('label')
@@ -483,7 +485,7 @@
 
 	.map-wrap {
 		position: relative;
-		height: 360px;
+		height: 500px;
 	}
 
 	.map, .globe {
