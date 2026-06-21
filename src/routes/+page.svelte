@@ -1,11 +1,14 @@
 <script lang="ts">
 	import FlightCard from '$lib/components/FlightCard.svelte';
+	import PastFlightsTimeline from '$lib/components/PastFlightsTimeline.svelte';
 	import type { PageData } from './$types';
 	import type { TrackedFlight } from '$lib/types';
 
 	let { data }: { data: PageData } = $props();
 
 	let localFlights = $state<TrackedFlight[] | null>(null);
+	type PastView = 'grid' | 'timeline';
+	let pastView = $state<PastView>('grid');
 	const ACTIVE_STATUSES  = new Set(['boarding', 'departed', 'airborne', 'landed', 'delayed']);
 	const PAST_STATUSES    = new Set(['arrived', 'cancelled', 'diverted']);
 
@@ -110,7 +113,7 @@
 			<p>Click "Track Flight" to get started.</p>
 		</div>
 	{:else}
-		{#each [{ label: 'Active', flights: activeFlights }, { label: 'Upcoming', flights: upcomingFlights }, { label: 'Past', flights: pastFlights }] as group}
+		{#each [{ label: 'Active', flights: activeFlights }, { label: 'Upcoming', flights: upcomingFlights }] as group}
 			{#if group.flights.length > 0}
 				<div class="group">
 					<h2 class="group-label">{group.label}</h2>
@@ -122,6 +125,43 @@
 				</div>
 			{/if}
 		{/each}
+
+		{#if pastFlights.length > 0}
+			<div class="group">
+				<div class="group-header">
+					<h2 class="group-label">Past</h2>
+					<div class="view-toggle">
+						<button class="view-btn" class:active={pastView === 'grid'} onclick={() => pastView = 'grid'} aria-label="Grid view">
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<rect x="3" y="3" width="7" height="7"></rect>
+								<rect x="14" y="3" width="7" height="7"></rect>
+								<rect x="3" y="14" width="7" height="7"></rect>
+								<rect x="14" y="14" width="7" height="7"></rect>
+							</svg>
+						</button>
+						<button class="view-btn" class:active={pastView === 'timeline'} onclick={() => pastView = 'timeline'} aria-label="Timeline view">
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<line x1="8" y1="6" x2="21" y2="6"></line>
+								<line x1="8" y1="12" x2="21" y2="12"></line>
+								<line x1="8" y1="18" x2="21" y2="18"></line>
+								<line x1="3" y1="6" x2="3.01" y2="6"></line>
+								<line x1="3" y1="12" x2="3.01" y2="12"></line>
+								<line x1="3" y1="18" x2="3.01" y2="18"></line>
+							</svg>
+						</button>
+					</div>
+				</div>
+				{#if pastView === 'grid'}
+					<div class="grid">
+						{#each pastFlights as flight (flight.id)}
+							<FlightCard {flight} onDelete={removeFlight} />
+						{/each}
+					</div>
+				{:else}
+					<PastFlightsTimeline flights={pastFlights} onDelete={removeFlight} />
+				{/if}
+			</div>
+		{/if}
 	{/if}
 </div>
 
@@ -201,6 +241,50 @@
 
 	.group {
 		margin-bottom: 32px;
+	}
+
+	.group-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 12px;
+	}
+
+	.group-header .group-label {
+		margin-bottom: 0;
+	}
+
+	.view-toggle {
+		display: flex;
+		border: 1px solid #e5e7eb;
+		border-radius: 6px;
+		overflow: hidden;
+	}
+
+	.view-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 30px;
+		height: 26px;
+		background: white;
+		border: none;
+		cursor: pointer;
+		color: #9ca3af;
+		transition: all 0.15s;
+	}
+
+	.view-btn:first-child {
+		border-right: 1px solid #e5e7eb;
+	}
+
+	.view-btn:hover {
+		color: #374151;
+	}
+
+	.view-btn.active {
+		background: #111827;
+		color: white;
 	}
 
 	.group-label {

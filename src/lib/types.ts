@@ -15,6 +15,8 @@ export interface FlightStatus {
 	status: FlightStatusType;
 	departureAirport: string | null;
 	arrivalAirport: string | null;
+	departureCity: string | null;
+	arrivalCity: string | null;
 	departureTz: string | null;
 	arrivalTz: string | null;
 	departureGate: string | null;
@@ -31,6 +33,7 @@ export interface FlightStatus {
 	aircraftType: string | null;
 	baggageClaim: string | null;
 	faFlightId: string | null;
+	trackData: { lat: number; lon: number; heading: number }[] | null;
 	lastChecked: string;
 	updatedAt: string;
 }

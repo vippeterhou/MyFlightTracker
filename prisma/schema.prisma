@@ -36,6 +36,8 @@ model FlightStatus {
   status           String
   departureAirport String?
   arrivalAirport   String?
+  departureCity    String?
+  arrivalCity      String?
   departureTz      String?
   arrivalTz        String?
   departureGate    String?

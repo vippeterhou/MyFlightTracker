@@ -73,6 +73,8 @@ export async function pollFlightStatuses(): Promise<void> {
 					: (flight.status?.boardingAt ?? null),
 				departureAirport: aero.origin?.code_iata ?? null,
 				arrivalAirport: aero.destination?.code_iata ?? null,
+				departureCity: aero.origin?.city ?? null,
+				arrivalCity: aero.destination?.city ?? null,
 				departureTz: aero.origin?.timezone ?? null,
 				arrivalTz: aero.destination?.timezone ?? null,
 				departureGate: aero.gate_origin ?? null,
