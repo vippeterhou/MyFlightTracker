@@ -191,7 +191,7 @@
 
 	.date {
 		font-size: 0.8rem;
-		color: #9ca3af;
+		color: #6b7280;
 		margin-top: 2px;
 	}
 

@@ -267,9 +267,19 @@
 
 		{#if flight.status}
 			<div class="airports">
-				<span class="iata">{flight.status.departureAirport ?? '?'}</span>
+				<div class="airport">
+					<span class="iata">{flight.status.departureAirport ?? '?'}</span>
+					{#if flight.status.departureCity}
+						<span class="city">{flight.status.departureCity}</span>
+					{/if}
+				</div>
 				<span class="arrow">→</span>
-				<span class="iata">{flight.status.arrivalAirport ?? '?'}</span>
+				<div class="airport">
+					<span class="iata">{flight.status.arrivalAirport ?? '?'}</span>
+					{#if flight.status.arrivalCity}
+						<span class="city">{flight.status.arrivalCity}</span>
+					{/if}
+				</div>
 			</div>
 		{/if}
 	</div>
@@ -459,7 +469,7 @@
 	}
 
 	.date {
-		color: #9ca3af;
+		color: #6b7280;
 		font-size: 0.875rem;
 		margin-top: 4px;
 	}
@@ -470,10 +480,20 @@
 		gap: 12px;
 	}
 
+	.airport {
+		display: flex;
+		flex-direction: column;
+	}
+
 	.iata {
 		font-size: 1.75rem;
 		font-weight: 700;
 		font-family: 'SF Mono', 'Fira Code', monospace;
+	}
+
+	.city {
+		font-size: 0.82rem;
+		color: #6b7280;
 	}
 
 	.arrow {

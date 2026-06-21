@@ -153,16 +153,26 @@
 
 				<div class="route-row">
 					{#if flight.status?.departureAirport}
-						<span class="route">{flight.status.departureAirport} → {flight.status.arrivalAirport ?? '?'}</span>
+						<div class="airports">
+							<div class="airport">
+								<span class="iata">{flight.status.departureAirport}</span>
+								{#if flight.status.departureCity}
+									<span class="city">{flight.status.departureCity}</span>
+								{/if}
+							</div>
+							<span class="arrow">→</span>
+							<div class="airport">
+								<span class="iata">{flight.status.arrivalAirport ?? '?'}</span>
+								{#if flight.status.arrivalCity}
+									<span class="city">{flight.status.arrivalCity}</span>
+								{/if}
+							</div>
+						</div>
 					{/if}
 					<span class="status" style="color: {color}">
 						{status.charAt(0).toUpperCase() + status.slice(1)}
 					</span>
 				</div>
-
-				{#if flight.status?.departureCity || flight.status?.arrivalCity}
-					<span class="city">{flight.status?.departureCity ?? ''} → {flight.status?.arrivalCity ?? ''}</span>
-				{/if}
 			</div>
 
 			<div class="group-bottom">
@@ -272,29 +282,44 @@
 	.route-row {
 		display: flex;
 		justify-content: space-between;
-		align-items: baseline;
+		align-items: center;
 		gap: 8px;
-		margin-bottom: 2px;
 	}
 
-	.route {
+	.airports {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+
+	.airport {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.iata {
+		font-size: 1.1rem;
+		font-weight: 700;
+		font-family: 'SF Mono', 'Fira Code', monospace;
+	}
+
+	.arrow {
+		color: #9ca3af;
 		font-size: 0.9rem;
-		color: #374151;
-		font-weight: 500;
+	}
+
+	.city {
+		font-size: 0.72rem;
+		color: #6b7280;
 	}
 
 	.status {
-		font-size: 0.9rem;
+		font-size: 0.82rem;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
 		margin-left: auto;
 		flex-shrink: 0;
-	}
-
-	.city {
-		font-size: 0.8rem;
-		color: #9ca3af;
 	}
 
 	.group-bottom {
@@ -305,7 +330,7 @@
 
 	.date {
 		font-size: 0.82rem;
-		color: #9ca3af;
+		color: #6b7280;
 	}
 
 	.times {
