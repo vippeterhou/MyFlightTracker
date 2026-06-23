@@ -143,18 +143,22 @@
 		loading = false;
 	}
 
+	const LOOKBACK_DAYS: Record<string, number> = { day: 30, week: 90, month: 365 };
+
 	function fillGaps(sorted: string[], gran: string): string[] {
-		if (sorted.length === 0) return sorted;
 		const result: string[] = [];
-		const start = new Date(sorted[0]);
 		const now = new Date();
 		const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+		const lookback = LOOKBACK_DAYS[gran] ?? 30;
+		const start = new Date(end.getTime() - lookback * 86400000);
+		if (gran === 'month') start.setUTCDate(1);
+		else if (gran === 'week') start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
 		const d = new Date(start);
 		while (d <= end) {
 			result.push(d.toISOString());
-			if (gran === 'month') d.setMonth(d.getMonth() + 1);
-			else if (gran === 'week') d.setDate(d.getDate() + 7);
-			else d.setDate(d.getDate() + 1);
+			if (gran === 'month') d.setUTCMonth(d.getUTCMonth() + 1);
+			else if (gran === 'week') d.setUTCDate(d.getUTCDate() + 7);
+			else d.setUTCDate(d.getUTCDate() + 1);
 		}
 		return result;
 	}
