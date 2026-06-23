@@ -72,7 +72,7 @@
 	let miniMap: import('leaflet').Map | undefined;
 
 	function normalizeTrack(track: { lat: number; lon: number }[]): [number, number][] {
-		return track.reduce<[number, number][]>((acc, p) => {
+		const unwrapped = track.reduce<[number, number][]>((acc, p) => {
 			let lng = p.lon;
 			if (acc.length > 0) {
 				const prevLng = acc[acc.length - 1][1];
@@ -82,6 +82,16 @@
 			acc.push([p.lat, lng]);
 			return acc;
 		}, []);
+
+		if (unwrapped.length === 0) return unwrapped;
+
+		const lngs = unwrapped.map((p) => p[1]);
+		const midLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+		const shift = Math.round(midLng / 360) * 360;
+		if (shift !== 0) {
+			for (const p of unwrapped) p[1] -= shift;
+		}
+		return unwrapped;
 	}
 
 	$effect(() => {

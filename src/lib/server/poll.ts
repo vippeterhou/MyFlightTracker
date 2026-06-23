@@ -1,5 +1,7 @@
+import type { Prisma } from '@prisma/client';
 import { db } from './db';
-import { getFlightByIdent, mapAeroStatus } from './aeroapi';
+import { getFlightByIdent, getFlightTrack, mapAeroStatus } from './aeroapi';
+import { logger } from './logger';
 
 export async function pollOneFlight(id: string): Promise<void> {
 	const flight = await db.trackedFlight.findUnique({
@@ -12,6 +14,16 @@ export async function pollOneFlight(id: string): Promise<void> {
 	if (!aero) return;
 
 	const newStatus = mapAeroStatus(aero);
+
+	let trackData = undefined;
+	if (newStatus === 'arrived' && aero.fa_flight_id && !flight.status?.trackData) {
+		try {
+			const track = await getFlightTrack(aero.fa_flight_id, flight.flightId);
+			if (track.length > 0) trackData = track;
+		} catch (err) {
+			await logger.warn(`Track fetch failed: ${(err as Error).message}`, flight.flightId);
+		}
+	}
 
 	const shared = {
 		status: newStatus,
@@ -34,6 +46,7 @@ export async function pollOneFlight(id: string): Promise<void> {
 		aircraftType: aero.aircraft_type ?? null,
 		baggageClaim: aero.baggage_claim ?? null,
 		faFlightId: aero.fa_flight_id ?? null,
+		...(trackData ? { trackData: trackData as unknown as Prisma.InputJsonValue } : {}),
 	};
 
 	await db.flightStatus.upsert({

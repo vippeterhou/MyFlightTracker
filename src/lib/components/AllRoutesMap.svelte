@@ -84,7 +84,7 @@
 		layerOpen = false;
 	}
 
-	function normalizeTrack(track: { lat: number; lon: number }[]): [number, number][] {
+	function unwrapTrack(track: { lat: number; lon: number }[]): [number, number][] {
 		return track.reduce<[number, number][]>((acc, p) => {
 			let lng = p.lon;
 			if (acc.length > 0) {
@@ -95,6 +95,31 @@
 			acc.push([p.lat, lng]);
 			return acc;
 		}, []);
+	}
+
+	function normalizeAllTracks(routes: FlightRoute[]): [number, number][][] {
+		const unwrapped = routes.map((r) => unwrapTrack(r.track));
+
+		const allMidLngs: number[] = [];
+		for (const track of unwrapped) {
+			if (track.length === 0) continue;
+			const lngs = track.map((p) => p[1]);
+			allMidLngs.push((Math.min(...lngs) + Math.max(...lngs)) / 2);
+		}
+		if (allMidLngs.length === 0) return unwrapped;
+
+		const refLng = allMidLngs.reduce((a, b) => a + b, 0) / allMidLngs.length;
+
+		for (const track of unwrapped) {
+			if (track.length === 0) continue;
+			const lngs = track.map((p) => p[1]);
+			const midLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+			const shift = Math.round((midLng - refLng) / 360) * 360;
+			if (shift !== 0) {
+				for (const p of track) p[1] -= shift;
+			}
+		}
+		return unwrapped;
 	}
 
 	$effect(() => {
@@ -127,10 +152,11 @@
 			tileLayers[activeLayerId].addTo(leafletInst);
 
 			const allBounds: [number, number][] = [];
+			const normalizedTracks = normalizeAllTracks(filteredRoutes);
 
 			filteredRoutes.forEach((route, i) => {
 				const color = COLORS[i % COLORS.length];
-				const latlngs = normalizeTrack(route.track);
+				const latlngs = normalizedTracks[i];
 				if (latlngs.length === 0) return;
 
 				allBounds.push(...latlngs);
