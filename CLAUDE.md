@@ -49,7 +49,7 @@ Two independently deployed services share one Supabase (PostgreSQL) database:
 
 **Data flow:**
 1. User adds a flight (flightId + date) via the dashboard → stored in `TrackedFlight` table
-2. Web app immediately polls AeroAPI once on add (`src/lib/server/poll.ts`)
+2. Web app immediately polls AeroAPI once on add (`src/lib/server/poll.ts`); if the flight is already arrived, also fetches and persists track data
 3. Worker polls AeroAPI every 10 min; on status change, upserts `FlightStatus` and sends Telegram message
 4. When a flight arrives at gate, worker fetches and persists the flight track (`trackData` JSON on `FlightStatus`) so the route map works without future API calls
 
