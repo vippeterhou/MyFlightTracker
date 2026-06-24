@@ -166,10 +166,10 @@
 	function formatBucketLabel(iso: string): string {
 		const d = new Date(iso);
 		if (granularity === 'month')
-			return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+			return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 		if (granularity === 'week')
-			return `Wk ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-		return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+			return `Wk ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}`;
+		return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 	}
 
 	function formatTimestamp(iso: string): string {
