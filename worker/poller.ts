@@ -76,7 +76,12 @@ export async function pollFlightStatuses(): Promise<void> {
 
 	for (const flight of active) {
 		try {
-			const aero = await getFlightByIdent(flight.flightId, flight.date);
+			const aero = await getFlightByIdent(flight.flightId, flight.date, {
+				faFlightId: flight.status?.faFlightId,
+				departureAirport: flight.status?.departureAirport,
+				arrivalAirport: flight.status?.arrivalAirport,
+				scheduledDep: flight.status?.scheduledDep,
+			});
 			if (!aero) {
 				await logger.warn('No data returned from AeroAPI', flight.flightId);
 				continue;

@@ -40,8 +40,24 @@
 	let loading = $state(false);
 	let formError = $state('');
 
+	interface FlightCandidate {
+		id: string;
+		departureAirport: string | null;
+		arrivalAirport: string | null;
+		scheduledDep: string | null;
+		scheduledArr: string | null;
+		departureTz: string | null;
+		arrivalTz: string | null;
+	}
+
+	let candidates = $state<FlightCandidate[]>([]);
+
 	async function addFlight(e: SubmitEvent) {
 		e.preventDefault();
+		await submitFlight();
+	}
+
+	async function submitFlight(selectedCandidateId?: string) {
 		if (!flightId.trim() || !date) return;
 		loading = true;
 		formError = '';
@@ -50,25 +66,46 @@
 			const res = await fetch('/api/flights', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ flightId, date, label }),
+				body: JSON.stringify({ flightId, date, label, selectedCandidateId }),
 			});
 
+			const body = await res.json();
+			if (res.status === 409 && body.requiresSelection) {
+				candidates = body.candidates;
+				return;
+			}
+
 			if (!res.ok) {
-				const body = await res.json();
 				formError = body.error ?? 'Failed to add flight';
 				return;
 			}
 
-			const flight: TrackedFlight = await res.json();
+			const flight = body as TrackedFlight;
 			localFlights = [flight, ...allFlights];
 			flightId = '';
 			label = '';
+			candidates = [];
 			showForm = false;
 		} catch {
 			formError = 'Network error — please try again';
 		} finally {
 			loading = false;
 		}
+	}
+
+	function clearCandidates() {
+		candidates = [];
+		formError = '';
+	}
+
+	function formatCandidateTime(value: string | null, tz: string | null): string {
+		if (!value) return '—';
+		const time = new Date(value).toLocaleTimeString('en-US', {
+			hour: 'numeric',
+			minute: '2-digit',
+			timeZone: tz ?? 'UTC',
+		});
+		return tz ? time : `${time} UTC`;
 	}
 
 	function removeFlight(id: string) {
@@ -95,23 +132,47 @@
 		<form class="add-form" onsubmit={addFlight}>
 			<input
 				bind:value={flightId}
+				oninput={clearCandidates}
 				placeholder="Flight ID (e.g. AA123)"
 				class="input"
 				required
 				autocapitalize="characters"
 			/>
-			<input bind:value={date} type="date" class="input" required />
+			<input bind:value={date} oninput={clearCandidates} type="date" class="input" required />
 			<input
 				bind:value={label}
 				placeholder="Label — optional (e.g. Mom's flight)"
 				class="input"
 			/>
-{#if formError}
+			{#if formError}
 				<p class="error">{formError}</p>
 			{/if}
-			<button type="submit" class="btn btn-submit" disabled={loading}>
-				{loading ? 'Adding...' : 'Track'}
-			</button>
+			{#if candidates.length > 1}
+				<div class="candidate-picker">
+					<p class="candidate-title">Choose the flight segment:</p>
+					{#each candidates as candidate (candidate.id)}
+						<button
+							type="button"
+							class="candidate"
+							disabled={loading}
+							onclick={() => submitFlight(candidate.id)}
+						>
+							<span class="candidate-route">
+								{candidate.departureAirport ?? '?'} → {candidate.arrivalAirport ?? '?'}
+							</span>
+							<span class="candidate-time">
+								{formatCandidateTime(candidate.scheduledDep, candidate.departureTz)}
+								–
+								{formatCandidateTime(candidate.scheduledArr, candidate.arrivalTz)}
+							</span>
+						</button>
+					{/each}
+				</div>
+			{:else}
+				<button type="submit" class="btn btn-submit" disabled={loading}>
+					{loading ? 'Looking up...' : 'Track'}
+				</button>
+			{/if}
 		</form>
 	{/if}
 
@@ -245,6 +306,54 @@
 	.error {
 		color: #ef4444;
 		font-size: 0.875rem;
+	}
+
+	.candidate-picker {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.candidate-title {
+		margin: 0 0 2px;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: #374151;
+	}
+
+	.candidate {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+		width: 100%;
+		padding: 11px 12px;
+		background: #f9fafb;
+		border: 1px solid #d1d5db;
+		border-radius: 8px;
+		color: #111827;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.candidate:hover {
+		border-color: #3b82f6;
+		background: #eff6ff;
+	}
+
+	.candidate:disabled {
+		opacity: 0.6;
+		cursor: wait;
+	}
+
+	.candidate-route {
+		font-weight: 600;
+	}
+
+	.candidate-time {
+		color: #6b7280;
+		font-size: 0.875rem;
+		white-space: nowrap;
 	}
 
 	.group {

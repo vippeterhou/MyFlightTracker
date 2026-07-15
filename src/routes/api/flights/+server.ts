@@ -1,6 +1,9 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { pollOneFlight } from '$lib/server/poll';
+import {
+	applyInitialFlightMatch,
+	findInitialFlightMatches,
+} from '$lib/server/poll';
 import { logger } from '$lib/server/logger';
 import { sendMessage } from '$lib/server/telegram';
 import type { RequestHandler } from './$types';
@@ -18,15 +21,50 @@ export const POST: RequestHandler = async ({ request }) => {
 	const flightId: string = body.flightId;
 	const date: string = body.date;
 	const label: string | undefined = body.label;
+	const selectedCandidateId: string | undefined = body.selectedCandidateId;
 
 	if (!flightId?.trim() || !date) {
 		return json({ error: 'flightId and date are required' }, { status: 400 });
 	}
 
+	const normalizedFlightId = flightId.toUpperCase().replace(/\s+/g, '');
+	const flightDate = new Date(date);
+	if (Number.isNaN(flightDate.getTime())) {
+		return json({ error: 'date must be valid' }, { status: 400 });
+	}
+
+	let matches;
+	try {
+		matches = await findInitialFlightMatches(normalizedFlightId, flightDate);
+	} catch (err) {
+		await logger.error(
+			`Initial flight lookup failed: ${(err as Error).message}`,
+			normalizedFlightId,
+		);
+		return json({ error: 'Unable to look up this flight right now' }, { status: 502 });
+	}
+
+	if (matches.length > 1 && !selectedCandidateId) {
+		return json(
+			{
+				requiresSelection: true,
+				candidates: matches.map((match) => match.candidate),
+			},
+			{ status: 409 },
+		);
+	}
+
+	const selectedMatch = selectedCandidateId
+		? matches.find((match) => match.candidate.id === selectedCandidateId)
+		: matches[0];
+	if (selectedCandidateId && !selectedMatch) {
+		return json({ error: 'The selected flight segment is no longer available' }, { status: 400 });
+	}
+
 	const flight = await db.trackedFlight.create({
 		data: {
-			flightId: flightId.toUpperCase().replace(/\s+/g, ''),
-			date: new Date(date),
+			flightId: normalizedFlightId,
+			date: flightDate,
 			label: label?.trim() || null,
 		},
 	});
@@ -37,11 +75,15 @@ export const POST: RequestHandler = async ({ request }) => {
 		logger.warn(`Telegram notification failed: ${err.message}`, flight.flightId)
 	);
 
-	// Immediately fetch status from AeroAPI so the card shows data right away
-	try {
-		await pollOneFlight(flight.id);
-	} catch (err) {
-		console.error('[api] initial poll failed:', err);
+	if (selectedMatch) {
+		try {
+			await applyInitialFlightMatch(flight.id, selectedMatch);
+		} catch (err) {
+			await logger.error(
+				`Initial status save failed: ${(err as Error).message}`,
+				flight.flightId,
+			);
+		}
 	}
 
 	const updated = await db.trackedFlight.findUnique({

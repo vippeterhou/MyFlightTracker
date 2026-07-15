@@ -1,13 +1,134 @@
 import type { Prisma } from '@prisma/client';
 import { db } from './db';
-import { getFlightByIdent, getFlightSchedule, getFlightTrack, mapAeroStatus } from './aeroapi';
-import type { AeroFlight } from './aeroapi';
+import {
+	getFlightByIdent,
+	getFlightSchedule,
+	getFlightSchedules,
+	getFlightsByIdent,
+	getFlightTrack,
+	mapAeroStatus,
+} from './aeroapi';
+import type { AeroFlight, AeroSchedule, FlightSelection } from './aeroapi';
 import { lookupAirportTz } from './airportTz';
 import { logger } from './logger';
 
 // AeroAPI's live /flights/{ident} endpoint only accepts query windows ending within ~2 days.
 // For flights whose day ends beyond that, the live call 400s, so go straight to schedules.
 const LIVE_DATA_WINDOW_DAYS = 2;
+
+export interface InitialFlightCandidate {
+	id: string;
+	departureAirport: string | null;
+	arrivalAirport: string | null;
+	scheduledDep: string | null;
+	scheduledArr: string | null;
+	departureTz: string | null;
+	arrivalTz: string | null;
+}
+
+export type InitialFlightMatch =
+	| { candidate: InitialFlightCandidate; aero: AeroFlight }
+	| { candidate: InitialFlightCandidate; schedule: AeroSchedule };
+
+type FlightWithStatus = Prisma.TrackedFlightGetPayload<{ include: { status: true } }>;
+
+function isBeyondLiveWindow(date: Date): boolean {
+	const endOfFlightDay = date.getTime() + 86400000;
+	return (endOfFlightDay - Date.now()) / 86400000 > LIVE_DATA_WINDOW_DAYS;
+}
+
+function flightSelection(flight: FlightWithStatus): FlightSelection {
+	return {
+		faFlightId: flight.status?.faFlightId,
+		departureAirport: flight.status?.departureAirport,
+		arrivalAirport: flight.status?.arrivalAirport,
+		scheduledDep: flight.status?.scheduledDep,
+	};
+}
+
+function liveCandidate(aero: AeroFlight): InitialFlightMatch {
+	return {
+		candidate: {
+			id: `live:${aero.fa_flight_id}`,
+			departureAirport: aero.origin?.code_iata ?? null,
+			arrivalAirport: aero.destination?.code_iata ?? null,
+			scheduledDep: aero.scheduled_out,
+			scheduledArr: aero.scheduled_in,
+			departureTz: aero.origin?.timezone ?? null,
+			arrivalTz: aero.destination?.timezone ?? null,
+		},
+		aero,
+	};
+}
+
+function scheduleCandidate(schedule: AeroSchedule): InitialFlightMatch {
+	const departureAirport = schedule.origin_iata ?? schedule.origin ?? null;
+	const arrivalAirport = schedule.destination_iata ?? schedule.destination ?? null;
+	return {
+		candidate: {
+			id: `schedule:${departureAirport ?? ''}|${arrivalAirport ?? ''}|${schedule.scheduled_out ?? ''}`,
+			departureAirport,
+			arrivalAirport,
+			scheduledDep: schedule.scheduled_out,
+			scheduledArr: schedule.scheduled_in,
+			departureTz: lookupAirportTz(departureAirport),
+			arrivalTz: lookupAirportTz(arrivalAirport),
+		},
+		schedule,
+	};
+}
+
+export async function findInitialFlightMatches(
+	flightId: string,
+	date: Date,
+): Promise<InitialFlightMatch[]> {
+	const wantedDay = date.toISOString().split('T')[0];
+
+	if (!isBeyondLiveWindow(date)) {
+		try {
+			const flights = await getFlightsByIdent(flightId, date);
+			const localDateMatches = flights.filter((flight) => {
+				if (!flight.scheduled_out) return false;
+				const tz = flight.origin?.timezone ?? 'UTC';
+				return (
+					new Date(flight.scheduled_out).toLocaleDateString('en-CA', { timeZone: tz }) ===
+					wantedDay
+				);
+			});
+			localDateMatches.sort((a, b) => {
+				const aTime = a.scheduled_out ? new Date(a.scheduled_out).getTime() : 0;
+				const bTime = b.scheduled_out ? new Date(b.scheduled_out).getTime() : 0;
+				return aTime - bTime;
+			});
+			if (localDateMatches.length > 0) return localDateMatches.map(liveCandidate);
+		} catch (err) {
+			await logger.warn(
+				`Live lookup failed (${(err as Error).message}); falling back to schedule`,
+				flightId,
+			);
+		}
+	}
+
+	const schedules = await getFlightSchedules(flightId, date);
+	return schedules.map(scheduleCandidate);
+}
+
+export async function applyInitialFlightMatch(
+	id: string,
+	match: InitialFlightMatch,
+): Promise<void> {
+	const flight = await db.trackedFlight.findUnique({
+		where: { id },
+		include: { status: true },
+	});
+	if (!flight) return;
+
+	if ('aero' in match) {
+		await applyAeroFlight(flight, match.aero);
+	} else {
+		await applyScheduleFlight(flight, match.schedule);
+	}
+}
 
 export async function pollOneFlight(id: string): Promise<void> {
 	const flight = await db.trackedFlight.findUnique({
@@ -16,12 +137,7 @@ export async function pollOneFlight(id: string): Promise<void> {
 	});
 	if (!flight) return;
 
-	// getFlightByIdent queries the entire flight day (…T23:59:59Z). AeroAPI's live endpoint
-	// rejects (400) windows whose end is more than LIVE_DATA_WINDOW_DAYS out, so measure to
-	// the END of the flight day and route to published schedules before the live call fails.
-	const endOfFlightDay = flight.date.getTime() + 86400000;
-	const daysUntil = (endOfFlightDay - Date.now()) / 86400000;
-	if (daysUntil > LIVE_DATA_WINDOW_DAYS) {
+	if (isBeyondLiveWindow(flight.date)) {
 		await applyScheduleFallback(flight);
 		return;
 	}
@@ -30,7 +146,7 @@ export async function pollOneFlight(id: string): Promise<void> {
 	// failure (empty result or error) so we still populate the route.
 	let aero: AeroFlight | null = null;
 	try {
-		aero = await getFlightByIdent(flight.flightId, flight.date);
+		aero = await getFlightByIdent(flight.flightId, flight.date, flightSelection(flight));
 	} catch (err) {
 		await logger.warn(
 			`Live lookup failed (${(err as Error).message}); falling back to schedule`,
@@ -42,6 +158,10 @@ export async function pollOneFlight(id: string): Promise<void> {
 		return;
 	}
 
+	await applyAeroFlight(flight, aero);
+}
+
+async function applyAeroFlight(flight: FlightWithStatus, aero: AeroFlight): Promise<void> {
 	const newStatus = mapAeroStatus(aero);
 
 	let trackData = undefined;
@@ -92,17 +212,26 @@ export async function pollOneFlight(id: string): Promise<void> {
 	});
 }
 
-type FlightWithStatus = Prisma.TrackedFlightGetPayload<{ include: { status: true } }>;
-
 // Populates route (airport codes) and scheduled times from published schedules for
 // flights AeroAPI's live endpoint doesn't cover yet. Skips if the route is already
 // known, so it runs at most once per flight and never overwrites live data.
 async function applyScheduleFallback(flight: FlightWithStatus): Promise<void> {
 	if (flight.status?.departureAirport) return;
 
-	const sched = await getFlightSchedule(flight.flightId, flight.date);
+	const sched = await getFlightSchedule(
+		flight.flightId,
+		flight.date,
+		flightSelection(flight),
+	);
 	if (!sched) return;
 
+	await applyScheduleFlight(flight, sched);
+}
+
+async function applyScheduleFlight(
+	flight: FlightWithStatus,
+	sched: AeroSchedule,
+): Promise<void> {
 	const departureAirport = sched.origin_iata ?? sched.origin ?? null;
 	const arrivalAirport = sched.destination_iata ?? sched.destination ?? null;
 

@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
 import { logger } from './logger';
-import { lookupAirportTz } from './airportTz';
 
 const AEROAPI_BASE = 'https://aeroapi.flightaware.com/aeroapi';
 const _db = new PrismaClient();
@@ -54,7 +53,14 @@ export interface AeroFlight {
 	actual_in: string | null;
 }
 
-export async function getFlightByIdent(flightId: string, date: Date): Promise<AeroFlight | null> {
+export interface FlightSelection {
+	faFlightId?: string | null;
+	departureAirport?: string | null;
+	arrivalAirport?: string | null;
+	scheduledDep?: Date | string | null;
+}
+
+export async function getFlightsByIdent(flightId: string, date: Date): Promise<AeroFlight[]> {
 	const apiKey = process.env.AEROAPI_KEY;
 	if (!apiKey) throw new Error('AEROAPI_KEY not set');
 
@@ -70,11 +76,58 @@ export async function getFlightByIdent(flightId: string, date: Date): Promise<Ae
 	const res = await aeroFetch(url, apiKey);
 	logApiCall('status', flightId, Date.now() - t0, res.ok || res.status === 404, res.status);
 
-	if (res.status === 404) return null;
+	if (res.status === 404) return [];
 	if (!res.ok) throw new Error(`AeroAPI ${res.status}: ${await res.text()}`);
 
 	const data = await res.json();
-	return (data.flights as AeroFlight[])[0] ?? null;
+	return (data.flights ?? []) as AeroFlight[];
+}
+
+export async function getFlightByIdent(
+	flightId: string,
+	date: Date,
+	selection?: FlightSelection,
+): Promise<AeroFlight | null> {
+	const flights = await getFlightsByIdent(flightId, date);
+	if (flights.length === 0) return null;
+
+	if (selection?.faFlightId) {
+		const byId = flights.find((f) => f.fa_flight_id === selection.faFlightId);
+		if (byId) return byId;
+	}
+
+	const hasRouteSelection = Boolean(
+		selection?.departureAirport || selection?.arrivalAirport,
+	);
+	const routeMatches = hasRouteSelection
+		? flights.filter(
+				(f) =>
+					(!selection?.departureAirport ||
+						f.origin?.code_iata === selection.departureAirport) &&
+					(!selection?.arrivalAirport ||
+						f.destination?.code_iata === selection.arrivalAirport),
+			)
+		: flights;
+	if (routeMatches.length === 0) return null;
+
+	if (selection?.scheduledDep) {
+		const target = new Date(selection.scheduledDep).getTime();
+		return routeMatches.reduce((closest, candidate) => {
+			const closestTime = closest.scheduled_out
+				? Math.abs(new Date(closest.scheduled_out).getTime() - target)
+				: Number.POSITIVE_INFINITY;
+			const candidateTime = candidate.scheduled_out
+				? Math.abs(new Date(candidate.scheduled_out).getTime() - target)
+				: Number.POSITIVE_INFINITY;
+			return candidateTime < closestTime ? candidate : closest;
+		});
+	}
+
+	// An explicit FlightAware ID that disappeared cannot safely fall back to an
+	// unrelated first result without route or time information to identify the leg.
+	if (selection?.faFlightId && !hasRouteSelection) return null;
+
+	return routeMatches[0];
 }
 
 export interface AeroSchedule {
@@ -95,13 +148,16 @@ export interface AeroSchedule {
 // Published airline schedules, available up to ~1 year ahead (unlike /flights/{ident},
 // which only has data ~2 days out). Returns airport CODES and scheduled times only — no
 // city names or timezones. Used to populate route info for far-future flights.
-export async function getFlightSchedule(flightId: string, date: Date): Promise<AeroSchedule | null> {
+export async function getFlightSchedules(flightId: string, date: Date): Promise<AeroSchedule[]> {
 	const apiKey = process.env.AEROAPI_KEY;
 	if (!apiKey) throw new Error('AEROAPI_KEY not set');
+	// The worker imports this module for live polling but never calls schedules. Load the
+	// bundled airport dataset only on schedule requests so it does not consume worker RAM.
+	const { lookupAirportTz } = await import('./airportTz');
 
 	// The schedules endpoint has no ident filter — split "UA2402" into carrier + number.
 	const m = flightId.match(/^([A-Za-z]+)0*(\d+)$/);
-	if (!m) return null;
+	if (!m) return [];
 	const airline = m[1].toUpperCase();
 	const flightNumber = m[2];
 
@@ -127,7 +183,8 @@ export async function getFlightSchedule(flightId: string, date: Date): Promise<A
 	const MAX_PAGES = 4;
 	let nextPath: string | null =
 		`/schedules/${startStr}/${endStr}?airline=${encodeURIComponent(airline)}&flight_number=${flightNumber}`;
-	let firstMatch: AeroSchedule | null = null;
+	const exactMatches: AeroSchedule[] = [];
+	const fallbackMatches: AeroSchedule[] = [];
 
 	for (let page = 0; page < MAX_PAGES && nextPath; page++) {
 		await logger.info(`[API] Schedule: ${flightId}`, flightId);
@@ -135,24 +192,87 @@ export async function getFlightSchedule(flightId: string, date: Date): Promise<A
 		const res: Response = await aeroFetch(`${AEROAPI_BASE}${nextPath}`, apiKey);
 		logApiCall('schedule', flightId, Date.now() - t0, res.ok || res.status === 404, res.status);
 
-		if (res.status === 404) return firstMatch;
+		if (res.status === 404) break;
 		if (!res.ok) throw new Error(`AeroAPI ${res.status}: ${await res.text()}`);
 
 		const data = await res.json();
 		const list = (data.scheduled ?? []) as AeroSchedule[];
 		const candidates = list.filter(isThisFlight);
+		fallbackMatches.push(...candidates);
 
-		// Prefer the instance whose origin-local departure date matches the entered date.
-		const exact = candidates.find((s) => localDay(s) === wantDay);
-		if (exact) return exact;
-
-		// Remember the first candidate seen as a fallback if no exact local-date match exists.
-		if (!firstMatch && candidates.length > 0) firstMatch = candidates[0];
+		exactMatches.push(...candidates.filter((s) => localDay(s) === wantDay));
 
 		nextPath = (data.links?.next as string | undefined) ?? null;
 	}
 
-	return firstMatch;
+	// Never return a known-timezone flight from the wrong local day. Keep the fallback
+	// only for airports absent from the timezone dataset, where local-day matching is
+	// impossible and the user must disambiguate from the displayed route/time.
+	const matches =
+		exactMatches.length > 0
+			? exactMatches
+			: fallbackMatches.filter(
+					(match) => !lookupAirportTz(match.origin_iata ?? match.origin),
+				);
+	const unique = new Map<string, AeroSchedule>();
+	for (const match of matches) {
+		const key = [
+			match.origin_iata ?? match.origin ?? '',
+			match.destination_iata ?? match.destination ?? '',
+			match.scheduled_out ?? '',
+		].join('|');
+		if (!unique.has(key)) unique.set(key, match);
+	}
+	return [...unique.values()].sort((a, b) => {
+		const aTime = a.scheduled_out ? new Date(a.scheduled_out).getTime() : 0;
+		const bTime = b.scheduled_out ? new Date(b.scheduled_out).getTime() : 0;
+		return aTime - bTime;
+	});
+}
+
+export async function getFlightSchedule(
+	flightId: string,
+	date: Date,
+	selection?: FlightSelection,
+): Promise<AeroSchedule | null> {
+	const schedules = await getFlightSchedules(flightId, date);
+	if (schedules.length === 0) return null;
+
+	if (selection?.faFlightId) {
+		const byId = schedules.find((s) => s.fa_flight_id === selection.faFlightId);
+		if (byId) return byId;
+	}
+
+	const hasRouteSelection = Boolean(
+		selection?.departureAirport || selection?.arrivalAirport,
+	);
+	const routeMatches = hasRouteSelection
+		? schedules.filter(
+				(s) =>
+					(!selection?.departureAirport ||
+						(s.origin_iata ?? s.origin) === selection.departureAirport) &&
+					(!selection?.arrivalAirport ||
+						(s.destination_iata ?? s.destination) === selection.arrivalAirport),
+			)
+		: schedules;
+	if (routeMatches.length === 0) return null;
+
+	if (selection?.scheduledDep) {
+		const target = new Date(selection.scheduledDep).getTime();
+		return routeMatches.reduce((closest, candidate) => {
+			const closestTime = closest.scheduled_out
+				? Math.abs(new Date(closest.scheduled_out).getTime() - target)
+				: Number.POSITIVE_INFINITY;
+			const candidateTime = candidate.scheduled_out
+				? Math.abs(new Date(candidate.scheduled_out).getTime() - target)
+				: Number.POSITIVE_INFINITY;
+			return candidateTime < closestTime ? candidate : closest;
+		});
+	}
+
+	if (selection?.faFlightId && !hasRouteSelection) return null;
+
+	return routeMatches[0];
 }
 
 
