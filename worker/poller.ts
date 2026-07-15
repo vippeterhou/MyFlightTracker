@@ -12,6 +12,12 @@ const NOTIFY_STATUSES = new Set([
 
 const TERMINAL_STATUSES = new Set(['arrived', 'cancelled']);
 
+// AeroAPI's /flights/{ident} endpoint only reliably has data ~2 days ahead. Since
+// f.date is midnight UTC of the flight day (not the actual departure time), we gate a
+// bit under 2 days so the effective start lands ~2 days or a bit less before departure —
+// inside the window where AeroAPI actually has the flight, avoiding wasted empty polls.
+const FUTURE_POLL_WINDOW_DAYS = 1.5;
+
 export async function pollFlightStatuses(): Promise<void> {
 	const flights = await db.trackedFlight.findMany({
 		include: { status: true },
@@ -26,7 +32,7 @@ export async function pollFlightStatuses(): Promise<void> {
 		const s = f.status?.status;
 		if (s && s !== 'scheduled') { active.push(f); continue; }
 
-		// For scheduled/unknown flights: only poll within 4 hours of scheduled departure
+		// AeroAPI already returned a scheduled departure: only poll within 4 hours of it
 		const sched = f.status?.scheduledDep;
 		if (sched) {
 			const hoursUntil = (sched.getTime() - now) / (1000 * 60 * 60);
@@ -34,6 +40,16 @@ export async function pollFlightStatuses(): Promise<void> {
 				await logger.info(`Skipping — departs in ${hoursUntil.toFixed(1)}h`, f.flightId);
 				continue;
 			}
+			active.push(f);
+			continue;
+		}
+
+		// No AeroAPI data yet — gate on the user-provided flight date. AeroAPI won't
+		// have the flight until it's ~2 days out, so skip until then to save quota.
+		const daysUntilFlight = (f.date.getTime() - now) / (1000 * 60 * 60 * 24);
+		if (daysUntilFlight > FUTURE_POLL_WINDOW_DAYS) {
+			await logger.info(`Skipping — flight date in ${daysUntilFlight.toFixed(1)}d`, f.flightId);
+			continue;
 		}
 
 		active.push(f);
