@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { db } from './db';
 import { getFlightByIdent, getFlightSchedule, getFlightTrack, mapAeroStatus } from './aeroapi';
 import type { AeroFlight } from './aeroapi';
+import { lookupAirportTz } from './airportTz';
 import { logger } from './logger';
 
 // AeroAPI's live /flights/{ident} endpoint only accepts query windows ending within ~2 days.
@@ -102,10 +103,17 @@ async function applyScheduleFallback(flight: FlightWithStatus): Promise<void> {
 	const sched = await getFlightSchedule(flight.flightId, flight.date);
 	if (!sched) return;
 
+	const departureAirport = sched.origin_iata ?? sched.origin ?? null;
+	const arrivalAirport = sched.destination_iata ?? sched.destination ?? null;
+
 	const shared = {
 		status: 'scheduled',
-		departureAirport: sched.origin_iata ?? sched.origin ?? null,
-		arrivalAirport: sched.destination_iata ?? sched.destination ?? null,
+		departureAirport,
+		arrivalAirport,
+		// Schedules omit timezones, so resolve them from the bundled IATA→IANA dataset
+		// so cards can show true airport-local (DST-aware) times instead of UTC.
+		departureTz: lookupAirportTz(sched.origin_iata ?? sched.origin),
+		arrivalTz: lookupAirportTz(sched.destination_iata ?? sched.destination),
 		scheduledDep: sched.scheduled_out ? new Date(sched.scheduled_out) : null,
 		scheduledArr: sched.scheduled_in ? new Date(sched.scheduled_in) : null,
 		aircraftType: sched.aircraft_type ?? null,
