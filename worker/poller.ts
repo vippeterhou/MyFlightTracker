@@ -13,10 +13,10 @@ const NOTIFY_STATUSES = new Set([
 const TERMINAL_STATUSES = new Set(['arrived', 'cancelled']);
 
 // AeroAPI's /flights/{ident} endpoint only reliably has data ~2 days ahead. Since
-// f.date is midnight UTC of the flight day (not the actual departure time), we gate a
-// bit under 2 days so the effective start lands ~2 days or a bit less before departure —
-// inside the window where AeroAPI actually has the flight, avoiding wasted empty polls.
-const FUTURE_POLL_WINDOW_DAYS = 1.5;
+// f.date is midnight UTC of the flight day (not the actual departure time), we gate on
+// the flight day being within this many days so the worker doesn't burn quota polling
+// flights whose live data doesn't exist yet.
+const FUTURE_POLL_WINDOW_DAYS = 1;
 
 export async function pollFlightStatuses(): Promise<void> {
 	const flights = await db.trackedFlight.findMany({
