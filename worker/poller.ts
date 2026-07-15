@@ -12,10 +12,10 @@ const NOTIFY_STATUSES = new Set([
 
 const TERMINAL_STATUSES = new Set(['arrived', 'cancelled']);
 
-// AeroAPI's /flights/{ident} endpoint only reliably has data ~2 days ahead. Since
-// f.date is midnight UTC of the flight day (not the actual departure time), we gate on
-// the flight day being within this many days so the worker doesn't burn quota polling
-// flights whose live data doesn't exist yet.
+// AeroAPI's /flights/{ident} endpoint only reliably has live data ~2 days ahead. Since
+// f.date is midnight UTC of the flight day (not the actual departure time), gate on the
+// flight day being within this many days so the worker doesn't burn quota polling flights
+// whose live data doesn't exist yet.
 const FUTURE_POLL_WINDOW_DAYS = 1;
 
 export async function pollFlightStatuses(): Promise<void> {
@@ -44,8 +44,8 @@ export async function pollFlightStatuses(): Promise<void> {
 			continue;
 		}
 
-		// No AeroAPI data yet — gate on the user-provided flight date. AeroAPI won't
-		// have the flight until it's ~2 days out, so skip until then to save quota.
+		// No AeroAPI data yet — gate on the user-provided flight date, skipping until the
+		// flight day is within the window so we don't poll before live data can exist.
 		const daysUntilFlight = (f.date.getTime() - now) / (1000 * 60 * 60 * 24);
 		if (daysUntilFlight > FUTURE_POLL_WINDOW_DAYS) {
 			await logger.info(`Skipping — flight date in ${daysUntilFlight.toFixed(1)}d`, f.flightId);

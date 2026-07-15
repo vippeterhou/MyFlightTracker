@@ -3,6 +3,10 @@ import { db } from './db';
 import { getFlightByIdent, getFlightSchedule, getFlightTrack, mapAeroStatus } from './aeroapi';
 import { logger } from './logger';
 
+// AeroAPI's live /flights/{ident} endpoint only has data ~2 days out. For flights further
+// away, the live call is guaranteed empty, so skip it and go straight to schedules.
+const LIVE_DATA_WINDOW_DAYS = 2;
+
 export async function pollOneFlight(id: string): Promise<void> {
 	const flight = await db.trackedFlight.findUnique({
 		where: { id },
@@ -10,10 +14,10 @@ export async function pollOneFlight(id: string): Promise<void> {
 	});
 	if (!flight) return;
 
-	// AeroAPI's live endpoint only has data ~2 days out. For flights further away, skip
-	// the (guaranteed-empty) live call and go straight to published schedules for the route.
+	// For flights beyond the live-data window, skip the (empty) live call and its rate-limit
+	// delay and populate the route from published schedules instead.
 	const daysUntil = (flight.date.getTime() - Date.now()) / 86400000;
-	if (daysUntil > 2) {
+	if (daysUntil > LIVE_DATA_WINDOW_DAYS) {
 		await applyScheduleFallback(flight);
 		return;
 	}
@@ -76,9 +80,7 @@ export async function pollOneFlight(id: string): Promise<void> {
 	});
 }
 
-type FlightWithStatus = NonNullable<
-	Awaited<ReturnType<typeof db.trackedFlight.findUnique>>
-> & { status: { departureAirport: string | null } | null };
+type FlightWithStatus = Prisma.TrackedFlightGetPayload<{ include: { status: true } }>;
 
 // Populates route (airport codes) and scheduled times from published schedules for
 // flights AeroAPI's live endpoint doesn't cover yet. Skips if the route is already
