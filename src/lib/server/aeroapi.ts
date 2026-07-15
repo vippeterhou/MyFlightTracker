@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { logger } from './logger';
+import { lookupAirportTz } from './airportTz';
 
 const AEROAPI_BASE = 'https://aeroapi.flightaware.com/aeroapi';
 const _db = new PrismaClient();
@@ -104,27 +105,54 @@ export async function getFlightSchedule(flightId: string, date: Date): Promise<A
 	const airline = m[1].toUpperCase();
 	const flightNumber = m[2];
 
-	const dateStr = date.toISOString().split('T')[0];
-	const nextStr = new Date(date.getTime() + 86400000).toISOString().split('T')[0];
-	const url = `${AEROAPI_BASE}/schedules/${dateStr}/${nextStr}?airline=${encodeURIComponent(airline)}&flight_number=${flightNumber}`;
+	// The user's entered date is a LOCAL calendar day, but the schedules endpoint filters
+	// by UTC day. A local-day departure can land on the UTC day before or after (e.g. an
+	// evening Americas departure at 00:50Z shows on the next UTC date; an early Asia
+	// departure on the previous one), so query a widened window (day-1 … day+2) and select
+	// the instance whose origin-LOCAL date matches. Results are paginated (15 per page) and
+	// bloated by codeshares, so follow pages until we find a match, capped to bound quota.
+	const wantDay = date.toISOString().split('T')[0];
+	const startStr = new Date(date.getTime() - 86400000).toISOString().split('T')[0];
+	const endStr = new Date(date.getTime() + 2 * 86400000).toISOString().split('T')[0];
 
-	await logger.info(`[API] Schedule: ${flightId}`, flightId);
-	const t0 = Date.now();
-	const res = await aeroFetch(url, apiKey);
-	logApiCall('schedule', flightId, Date.now() - t0, res.ok || res.status === 404, res.status);
+	const isThisFlight = (s: AeroSchedule) =>
+		[s.ident, s.ident_iata, s.ident_icao, s.actual_ident].includes(flightId);
 
-	if (res.status === 404) return null;
-	if (!res.ok) throw new Error(`AeroAPI ${res.status}: ${await res.text()}`);
+	const localDay = (s: AeroSchedule) => {
+		if (!s.scheduled_out) return null;
+		const tz = lookupAirportTz(s.origin_iata ?? s.origin);
+		return new Date(s.scheduled_out).toLocaleDateString('en-CA', { timeZone: tz ?? 'UTC' });
+	};
 
-	const data = await res.json();
-	const list = (data.scheduled ?? []) as AeroSchedule[];
-	if (list.length === 0) return null;
+	const MAX_PAGES = 4;
+	let nextPath: string | null =
+		`/schedules/${startStr}/${endStr}?airline=${encodeURIComponent(airline)}&flight_number=${flightNumber}`;
+	let firstMatch: AeroSchedule | null = null;
 
-	// Prefer the row whose ident matches (handles codeshares); otherwise take the first.
-	const match = list.find((s) =>
-		[s.ident, s.ident_iata, s.ident_icao, s.actual_ident].includes(flightId)
-	);
-	return match ?? list[0];
+	for (let page = 0; page < MAX_PAGES && nextPath; page++) {
+		await logger.info(`[API] Schedule: ${flightId}`, flightId);
+		const t0 = Date.now();
+		const res: Response = await aeroFetch(`${AEROAPI_BASE}${nextPath}`, apiKey);
+		logApiCall('schedule', flightId, Date.now() - t0, res.ok || res.status === 404, res.status);
+
+		if (res.status === 404) return firstMatch;
+		if (!res.ok) throw new Error(`AeroAPI ${res.status}: ${await res.text()}`);
+
+		const data = await res.json();
+		const list = (data.scheduled ?? []) as AeroSchedule[];
+		const candidates = list.filter(isThisFlight);
+
+		// Prefer the instance whose origin-local departure date matches the entered date.
+		const exact = candidates.find((s) => localDay(s) === wantDay);
+		if (exact) return exact;
+
+		// Remember the first candidate seen as a fallback if no exact local-date match exists.
+		if (!firstMatch && candidates.length > 0) firstMatch = candidates[0];
+
+		nextPath = (data.links?.next as string | undefined) ?? null;
+	}
+
+	return firstMatch;
 }
 
 
