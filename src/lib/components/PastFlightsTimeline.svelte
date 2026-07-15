@@ -1,6 +1,7 @@
 <script lang="ts">
 	import FlightCardExpanded from './FlightCardExpanded.svelte';
 	import type { TrackedFlight } from '$lib/types';
+	import { flightDateLabel, flightDayISO } from '$lib/dateFormat';
 
 	let {
 		flights,
@@ -25,24 +26,25 @@
 	let grouped = $derived.by((): MonthGroup[] => {
 		const map = new Map<string, TrackedFlight[]>();
 		for (const f of flights) {
-			const d = new Date(f.date);
-			const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`;
+			const [year, month] = flightDayISO(f).split('-');
+			const key = `${year}-${month}`;
 			const existing = map.get(key);
 			if (existing) existing.push(f);
 			else map.set(key, [f]);
 		}
 		return Array.from(map.entries()).map(([key, fls]) => {
-			const d = new Date(fls[0].date);
 			return {
 				key,
-				label: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+				label: flightDateLabel(fls[0], { month: 'long', year: 'numeric' }),
 				flights: fls,
 			};
 		});
 	});
 
 	function gapFor(prev: TrackedFlight, curr: TrackedFlight): number {
-		const days = Math.abs(new Date(prev.date).getTime() - new Date(curr.date).getTime()) / 86400000;
+		const prevMs = new Date(`${flightDayISO(prev)}T00:00:00Z`).getTime();
+		const currMs = new Date(`${flightDayISO(curr)}T00:00:00Z`).getTime();
+		const days = Math.abs(prevMs - currMs) / 86400000;
 		return Math.min(Math.max(days * 3, 6), 40);
 	}
 </script>

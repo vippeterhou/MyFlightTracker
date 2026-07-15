@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { TrackedFlight } from '$lib/types';
+	import { flightDateLabel } from '$lib/dateFormat';
 
 	let {
 		flight,
@@ -25,9 +26,7 @@
 	let color = $derived(STATUS_COLOR[status] ?? '#6b7280');
 
 	let dateLabel = $derived(
-		new Date(flight.date).toLocaleDateString('en-US', {
-			weekday: 'short', month: 'short', day: 'numeric',
-		})
+		flightDateLabel(flight, { weekday: 'short', month: 'short', day: 'numeric' })
 	);
 
 	function fmtTime(d: string | null | undefined, tz?: string | null) {

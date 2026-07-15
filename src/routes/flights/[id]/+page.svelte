@@ -3,6 +3,7 @@
 	import type { PageData } from './$types';
 	import type { TrackedFlight } from '$lib/types';
 	import type { TrackPoint } from '$lib/server/aeroapi';
+	import { flightDateLabel } from '$lib/dateFormat';
 
 	let { data }: { data: PageData } = $props();
 	let flight = $derived(data.flight as TrackedFlight);
@@ -56,8 +57,8 @@
 		});
 	});
 
-	function formatDate(d: string) {
-		return new Date(d).toLocaleDateString('en-US', {
+	function formatDate() {
+		return flightDateLabel(flight, {
 			weekday: 'long',
 			month: 'long',
 			day: 'numeric',
@@ -262,7 +263,7 @@
 					<button class="label-add" onclick={startEditLabel}>+ Add label</button>
 				{/if}
 			</div>
-			<p class="date">{formatDate(flight.date)}</p>
+			<p class="date">{formatDate()}</p>
 		</div>
 
 		{#if flight.status}
