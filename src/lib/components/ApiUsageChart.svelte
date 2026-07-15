@@ -30,6 +30,7 @@
 	interface MonthlySummary {
 		status: number;
 		route: number;
+		schedule: number;
 		total: number;
 		month: string;
 	}
@@ -76,6 +77,9 @@
 		const routeMap = new Map(
 			rows.filter((r) => r.endpoint === 'route').map((r) => [r.bucket, r.count]),
 		);
+		const scheduleMap = new Map(
+			rows.filter((r) => r.endpoint === 'schedule').map((r) => [r.bucket, r.count]),
+		);
 
 		const rawBuckets = [...new Set(rows.map((r) => r.bucket))].sort();
 		buckets = fillGaps(rawBuckets, granularity);
@@ -83,6 +87,7 @@
 		const labels = buckets.map((b) => formatBucketLabel(b));
 		const statusData = buckets.map((b) => statusMap.get(b) ?? 0);
 		const routeData = buckets.map((b) => routeMap.get(b) ?? 0);
+		const scheduleData = buckets.map((b) => scheduleMap.get(b) ?? 0);
 
 		chartInstance?.destroy();
 		chartInstance = new ChartClass(canvasEl, {
@@ -105,6 +110,16 @@
 						data: routeData,
 						borderColor: '#22c55e',
 						backgroundColor: 'rgba(34, 197, 94, 0.1)',
+						tension: 0.3,
+						fill: true,
+						pointRadius: 4,
+						pointHoverRadius: 6,
+					},
+					{
+						label: 'Schedule',
+						data: scheduleData,
+						borderColor: '#f59e0b',
+						backgroundColor: 'rgba(245, 158, 11, 0.1)',
 						tension: 0.3,
 						fill: true,
 						pointRadius: 4,
@@ -210,6 +225,11 @@
 			<span class="summary-label">Route</span>
 			<span class="summary-value">{summary.route}</span>
 		</div>
+		<div class="summary-item">
+			<span class="summary-dot schedule"></span>
+			<span class="summary-label">Schedule</span>
+			<span class="summary-value">{summary.schedule}</span>
+		</div>
 	</div>
 {/if}
 
@@ -233,8 +253,9 @@
 				<div class="drilldown-row">
 					<span class="ts">{formatTimestamp(call.timestamp)}</span>
 					<span class="endpoint" class:status={call.endpoint === 'status'}
-						class:route={call.endpoint === 'route'}>
-						{call.endpoint === 'status' ? 'Status' : 'Route'}
+						class:route={call.endpoint === 'route'}
+						class:schedule={call.endpoint === 'schedule'}>
+						{call.endpoint.charAt(0).toUpperCase() + call.endpoint.slice(1)}
 					</span>
 					{#if call.flightId}
 						<span class="flight">{call.flightId}</span>
@@ -275,6 +296,10 @@
 
 	.summary-dot.route {
 		background: #22c55e;
+	}
+
+	.summary-dot.schedule {
+		background: #f59e0b;
 	}
 
 	.summary-label {
@@ -396,6 +421,11 @@
 	.endpoint.route {
 		color: #22c55e;
 		background: rgba(34, 197, 94, 0.1);
+	}
+
+	.endpoint.schedule {
+		color: #f59e0b;
+		background: rgba(245, 158, 11, 0.1);
 	}
 
 	.flight {

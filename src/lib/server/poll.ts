@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { db } from './db';
-import { getFlightByIdent, getFlightTrack, mapAeroStatus } from './aeroapi';
+import { getFlightByIdent, getFlightSchedule, getFlightTrack, mapAeroStatus } from './aeroapi';
 import { logger } from './logger';
 
 export async function pollOneFlight(id: string): Promise<void> {
@@ -10,8 +10,21 @@ export async function pollOneFlight(id: string): Promise<void> {
 	});
 	if (!flight) return;
 
+	// AeroAPI's live endpoint only has data ~2 days out. For flights further away, skip
+	// the (guaranteed-empty) live call and go straight to published schedules for the route.
+	const daysUntil = (flight.date.getTime() - Date.now()) / 86400000;
+	if (daysUntil > 2) {
+		await applyScheduleFallback(flight);
+		return;
+	}
+
 	const aero = await getFlightByIdent(flight.flightId, flight.date);
-	if (!aero) return;
+	if (!aero) {
+		// No live data yet — fall back to published schedules to at least show the route
+		// (airport codes) and scheduled times.
+		await applyScheduleFallback(flight);
+		return;
+	}
 
 	const newStatus = mapAeroStatus(aero);
 
@@ -61,4 +74,39 @@ export async function pollOneFlight(id: string): Promise<void> {
 			...shared,
 		},
 	});
+}
+
+type FlightWithStatus = NonNullable<
+	Awaited<ReturnType<typeof db.trackedFlight.findUnique>>
+> & { status: { departureAirport: string | null } | null };
+
+// Populates route (airport codes) and scheduled times from published schedules for
+// flights AeroAPI's live endpoint doesn't cover yet. Skips if the route is already
+// known, so it runs at most once per flight and never overwrites live data.
+async function applyScheduleFallback(flight: FlightWithStatus): Promise<void> {
+	if (flight.status?.departureAirport) return;
+
+	const sched = await getFlightSchedule(flight.flightId, flight.date);
+	if (!sched) return;
+
+	const shared = {
+		status: 'scheduled',
+		departureAirport: sched.origin_iata ?? sched.origin ?? null,
+		arrivalAirport: sched.destination_iata ?? sched.destination ?? null,
+		scheduledDep: sched.scheduled_out ? new Date(sched.scheduled_out) : null,
+		scheduledArr: sched.scheduled_in ? new Date(sched.scheduled_in) : null,
+		aircraftType: sched.aircraft_type ?? null,
+		faFlightId: sched.fa_flight_id ?? null,
+	};
+
+	await db.flightStatus.upsert({
+		where: { trackedFlightId: flight.id },
+		create: { trackedFlightId: flight.id, ...shared },
+		update: { lastChecked: new Date(), ...shared },
+	});
+
+	await logger.info(
+		`Schedule: ${shared.departureAirport ?? '?'} → ${shared.arrivalAirport ?? '?'}`,
+		flight.flightId,
+	);
 }

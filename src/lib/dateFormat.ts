@@ -12,14 +12,15 @@ function departure(f: FlightLike): { ts: string; tz: string | null } | null {
 	return { ts, tz: s.departureTz };
 }
 
-// Formats a flight's date. When AeroAPI data is available, the date is taken from the
-// departure timestamp in the departure airport's timezone so it matches the times shown
-// on the card. Otherwise it falls back to the user-entered date (stored midnight UTC),
-// rendered in UTC to avoid an off-by-one shift in the browser's local timezone.
+// Formats a flight's date. When the departure airport's timezone is known, the date is
+// taken from the departure timestamp in that timezone so it matches the times shown on
+// the card. Otherwise (e.g. future flights with only schedule data, which lacks a
+// timezone) it falls back to the user-entered date (stored midnight UTC), rendered in
+// UTC to avoid an off-by-one shift in the browser's local timezone.
 export function flightDateLabel(f: FlightLike, opts: Intl.DateTimeFormatOptions): string {
 	const dep = departure(f);
-	if (dep) {
-		return new Date(dep.ts).toLocaleDateString('en-US', { ...opts, timeZone: dep.tz ?? undefined });
+	if (dep && dep.tz) {
+		return new Date(dep.ts).toLocaleDateString('en-US', { ...opts, timeZone: dep.tz });
 	}
 	return new Date(f.date).toLocaleDateString('en-US', { ...opts, timeZone: 'UTC' });
 }
@@ -28,8 +29,8 @@ export function flightDateLabel(f: FlightLike, opts: Intl.DateTimeFormatOptions)
 // departure-timezone logic as flightDateLabel. Useful for grouping and day-gap math.
 export function flightDayISO(f: FlightLike): string {
 	const dep = departure(f);
-	if (dep) {
-		return new Date(dep.ts).toLocaleDateString('en-CA', { timeZone: dep.tz ?? undefined });
+	if (dep && dep.tz) {
+		return new Date(dep.ts).toLocaleDateString('en-CA', { timeZone: dep.tz });
 	}
 	return new Date(f.date).toLocaleDateString('en-CA', { timeZone: 'UTC' });
 }

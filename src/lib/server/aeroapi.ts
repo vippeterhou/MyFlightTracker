@@ -76,6 +76,57 @@ export async function getFlightByIdent(flightId: string, date: Date): Promise<Ae
 	return (data.flights as AeroFlight[])[0] ?? null;
 }
 
+export interface AeroSchedule {
+	ident: string;
+	ident_icao: string | null;
+	ident_iata: string | null;
+	actual_ident: string | null;
+	origin: string | null;
+	origin_iata: string | null;
+	destination: string | null;
+	destination_iata: string | null;
+	scheduled_out: string | null;
+	scheduled_in: string | null;
+	aircraft_type: string | null;
+	fa_flight_id: string | null;
+}
+
+// Published airline schedules, available up to ~1 year ahead (unlike /flights/{ident},
+// which only has data ~2 days out). Returns airport CODES and scheduled times only — no
+// city names or timezones. Used to populate route info for far-future flights.
+export async function getFlightSchedule(flightId: string, date: Date): Promise<AeroSchedule | null> {
+	const apiKey = process.env.AEROAPI_KEY;
+	if (!apiKey) throw new Error('AEROAPI_KEY not set');
+
+	// The schedules endpoint has no ident filter — split "UA2402" into carrier + number.
+	const m = flightId.match(/^([A-Za-z]+)0*(\d+)$/);
+	if (!m) return null;
+	const airline = m[1].toUpperCase();
+	const flightNumber = m[2];
+
+	const dateStr = date.toISOString().split('T')[0];
+	const nextStr = new Date(date.getTime() + 86400000).toISOString().split('T')[0];
+	const url = `${AEROAPI_BASE}/schedules/${dateStr}/${nextStr}?airline=${encodeURIComponent(airline)}&flight_number=${flightNumber}`;
+
+	await logger.info(`[API] Schedule: ${flightId}`, flightId);
+	const t0 = Date.now();
+	const res = await aeroFetch(url, apiKey);
+	logApiCall('schedule', flightId, Date.now() - t0, res.ok || res.status === 404, res.status);
+
+	if (res.status === 404) return null;
+	if (!res.ok) throw new Error(`AeroAPI ${res.status}: ${await res.text()}`);
+
+	const data = await res.json();
+	const list = (data.scheduled ?? []) as AeroSchedule[];
+	if (list.length === 0) return null;
+
+	// Prefer the row whose ident matches (handles codeshares); otherwise take the first.
+	const match = list.find((s) =>
+		[s.ident, s.ident_iata, s.ident_icao, s.actual_ident].includes(flightId)
+	);
+	return match ?? list[0];
+}
+
 
 export interface TrackPoint {
 	timestamp: string;

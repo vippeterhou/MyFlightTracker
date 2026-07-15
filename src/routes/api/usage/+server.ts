@@ -58,8 +58,15 @@ async function getMonthlySummary() {
 
 	const status = rows.find((r) => r.endpoint === 'status')?.count ?? 0;
 	const route = rows.find((r) => r.endpoint === 'route')?.count ?? 0;
+	const schedule = rows.find((r) => r.endpoint === 'schedule')?.count ?? 0;
 
-	return json({ status, route, total: status + route, month: monthStart.toISOString() });
+	return json({
+		status,
+		route,
+		schedule,
+		total: status + route + schedule,
+		month: monthStart.toISOString(),
+	});
 }
 
 async function getDrilldown(bucketStart: string, granularity: Granularity) {
