@@ -42,15 +42,16 @@ export async function pollFlightStatuses(): Promise<void> {
 					await logger.info(`Skipping — departs in ${hoursUntil.toFixed(1)}h`, f.flightId);
 				} else {
 					// Schedule-only data has no timezone, so an hour countdown would be
-					// misleading — report the scheduled date/time instead.
+					// misleading — report the scheduled date/time (in UTC) instead.
 					const when = sched.toLocaleString('en-US', {
 						month: 'short',
 						day: 'numeric',
 						hour: '2-digit',
 						minute: '2-digit',
+						timeZone: 'UTC',
 					});
 					await logger.info(
-						`Skipping — live data not yet available for flight scheduled ${when}`,
+						`Skipping — live data not yet available for flight scheduled ${when} UTC`,
 						f.flightId,
 					);
 				}

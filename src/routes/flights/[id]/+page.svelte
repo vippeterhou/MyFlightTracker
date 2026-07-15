@@ -68,11 +68,14 @@
 
 	function formatTime(d: string | null | undefined, tz?: string | null) {
 		if (!d) return '—';
-		return new Date(d).toLocaleTimeString('en-US', {
+		// Schedule-only data has no airport timezone; show the raw value in UTC and
+		// label it so it isn't mistaken for local time.
+		const t = new Date(d).toLocaleTimeString('en-US', {
 			hour: '2-digit',
 			minute: '2-digit',
-			timeZone: tz ?? undefined,
+			timeZone: tz ?? 'UTC',
 		});
+		return tz ? t : `${t} UTC`;
 	}
 
 	const LAYERS = [
