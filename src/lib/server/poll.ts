@@ -1,10 +1,11 @@
 import type { Prisma } from '@prisma/client';
 import { db } from './db';
 import { getFlightByIdent, getFlightSchedule, getFlightTrack, mapAeroStatus } from './aeroapi';
+import type { AeroFlight } from './aeroapi';
 import { logger } from './logger';
 
-// AeroAPI's live /flights/{ident} endpoint only has data ~2 days out. For flights further
-// away, the live call is guaranteed empty, so skip it and go straight to schedules.
+// AeroAPI's live /flights/{ident} endpoint only accepts query windows ending within ~2 days.
+// For flights whose day ends beyond that, the live call 400s, so go straight to schedules.
 const LIVE_DATA_WINDOW_DAYS = 2;
 
 export async function pollOneFlight(id: string): Promise<void> {
@@ -14,18 +15,28 @@ export async function pollOneFlight(id: string): Promise<void> {
 	});
 	if (!flight) return;
 
-	// For flights beyond the live-data window, skip the (empty) live call and its rate-limit
-	// delay and populate the route from published schedules instead.
-	const daysUntil = (flight.date.getTime() - Date.now()) / 86400000;
+	// getFlightByIdent queries the entire flight day (…T23:59:59Z). AeroAPI's live endpoint
+	// rejects (400) windows whose end is more than LIVE_DATA_WINDOW_DAYS out, so measure to
+	// the END of the flight day and route to published schedules before the live call fails.
+	const endOfFlightDay = flight.date.getTime() + 86400000;
+	const daysUntil = (endOfFlightDay - Date.now()) / 86400000;
 	if (daysUntil > LIVE_DATA_WINDOW_DAYS) {
 		await applyScheduleFallback(flight);
 		return;
 	}
 
-	const aero = await getFlightByIdent(flight.flightId, flight.date);
+	// Within the live window: try the live endpoint, but fall back to schedules on any
+	// failure (empty result or error) so we still populate the route.
+	let aero: AeroFlight | null = null;
+	try {
+		aero = await getFlightByIdent(flight.flightId, flight.date);
+	} catch (err) {
+		await logger.warn(
+			`Live lookup failed (${(err as Error).message}); falling back to schedule`,
+			flight.flightId,
+		);
+	}
 	if (!aero) {
-		// No live data yet — fall back to published schedules to at least show the route
-		// (airport codes) and scheduled times.
 		await applyScheduleFallback(flight);
 		return;
 	}
