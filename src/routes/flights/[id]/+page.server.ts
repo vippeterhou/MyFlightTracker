@@ -3,7 +3,7 @@ import { getFlightTrack, type TrackPoint } from '$lib/server/aeroapi';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-const MAP_STATUSES = new Set(['departed', 'airborne', 'landed', 'arrived', 'diverted']);
+const TRACK_FETCH_STATUSES = new Set(['airborne', 'landed', 'arrived', 'diverted']);
 
 export const load: PageServerLoad = async ({ params }) => {
 	const flight = await db.trackedFlight.findUnique({
@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		track = cached;
 	} else {
 		const faId = flight.status?.faFlightId;
-		if (faId && MAP_STATUSES.has(flight.status?.status ?? '')) {
+		if (faId && TRACK_FETCH_STATUSES.has(flight.status?.status ?? '')) {
 			track = getFlightTrack(faId, flight.flightId).catch(() => []);
 		} else {
 			track = Promise.resolve([]);

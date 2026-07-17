@@ -43,7 +43,7 @@
 		if (e.key === 'Escape') editingLabel = false;
 	}
 
-	const MAP_STATUSES = new Set(['departed', 'airborne', 'landed', 'arrived', 'diverted']);
+	const MAP_STATUSES = new Set(['airborne', 'landed', 'arrived', 'diverted']);
 	let showMap = $derived(MAP_STATUSES.has(flight.status?.status ?? ''));
 
 	let track = $state<TrackPoint[]>([]);
@@ -288,7 +288,7 @@
 		{/if}
 	</div>
 
-	<div class="content" class:has-map={showMap}>
+	<div class="content">
 		<section class="card status-card">
 			<h2>Status</h2>
 			<FlightTimeline status={flight.status} />
@@ -506,13 +506,8 @@
 	}
 
 	.content {
-		display: flex;
-		flex-direction: column;
-		gap: 16px;
-	}
-
-	.content.has-map {
 		display: grid;
+		gap: 16px;
 		grid-template-columns: 280px 1fr;
 		grid-template-rows: auto 1fr;
 		grid-template-areas:
@@ -525,7 +520,7 @@
 	.map-card     { grid-area: map; display: flex; flex-direction: column; }
 
 	@media (max-width: 640px) {
-		.content.has-map {
+		.content {
 			grid-template-columns: 1fr;
 			grid-template-rows: auto;
 			grid-template-areas:
