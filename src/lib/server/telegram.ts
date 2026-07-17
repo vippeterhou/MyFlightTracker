@@ -1,12 +1,12 @@
 const TELEGRAM_API = 'https://api.telegram.org';
 
-export async function sendMessage(text: string): Promise<void> {
+export async function sendMessage(text: string): Promise<boolean> {
 	const token = process.env.TELEGRAM_BOT_TOKEN;
 	const chatId = process.env.TELEGRAM_CHAT_ID;
 
 	if (!token || !chatId) {
 		console.warn('[telegram] credentials not configured, skipping notification');
-		return;
+		return false;
 	}
 
 	const res = await fetch(`${TELEGRAM_API}/bot${token}/sendMessage`, {
@@ -18,6 +18,8 @@ export async function sendMessage(text: string): Promise<void> {
 	if (!res.ok) {
 		throw new Error(`Telegram ${res.status}: ${await res.text()}`);
 	}
+
+	return true;
 }
 
 export function buildNotification(

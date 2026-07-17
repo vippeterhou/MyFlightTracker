@@ -5,7 +5,10 @@ import {
 	findInitialFlightMatches,
 } from '$lib/server/poll';
 import { logger } from '$lib/server/logger';
-import { sendMessage } from '$lib/server/telegram';
+import {
+	buildNotificationSubject,
+	sendNotifications,
+} from '$lib/server/notifications';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {
@@ -71,8 +74,12 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	await logger.info(`Flight added`, flight.flightId);
 	const tag = flight.label ? `${flight.flightId} · ${flight.label}` : flight.flightId;
-	sendMessage(`📋 <b>[${tag}] Tracking started</b>`).catch((err: Error) =>
-		logger.warn(`Telegram notification failed: ${err.message}`, flight.flightId)
+	sendNotifications(
+		buildNotificationSubject(flight.flightId, 'tracking-started', flight.label),
+		`📋 <b>[${tag}] Tracking started</b>`,
+		flight.flightId,
+	).catch((err: Error) =>
+		logger.warn(`Notification dispatch failed: ${err.message}`, flight.flightId)
 	);
 
 	if (selectedMatch) {

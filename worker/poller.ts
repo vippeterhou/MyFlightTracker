@@ -1,11 +1,15 @@
 import { PrismaClient } from '@prisma/client';
 import { getFlightByIdent, getFlightTrack, mapAeroStatus } from '../src/lib/server/aeroapi.js';
-import { sendMessage, buildNotification } from '../src/lib/server/telegram.js';
+import { buildNotification } from '../src/lib/server/telegram.js';
+import {
+	buildNotificationSubject,
+	sendNotifications,
+} from '../src/lib/server/notifications.js';
 import { logger } from '../src/lib/server/logger.js';
 
 const db = new PrismaClient();
 
-// Statuses that warrant a Telegram notification on transition
+// Statuses that warrant notifications on transition
 const NOTIFY_STATUSES = new Set([
 	'boarding', 'departed', 'airborne', 'landed', 'arrived', 'cancelled', 'delayed', 'diverted',
 ]);
@@ -158,8 +162,11 @@ export async function pollFlightStatuses(): Promise<void> {
 					arrivalTz: statusData.arrivalTz,
 					baggageClaim: statusData.baggageClaim,
 				});
-				await sendMessage(msg);
-				await logger.info(`Telegram notification sent: ${newStatus}`, flight.flightId);
+				await sendNotifications(
+					buildNotificationSubject(flight.flightId, newStatus, flight.label),
+					msg,
+					flight.flightId,
+				);
 			}
 		} catch (err) {
 			await logger.error((err as Error).message, flight.flightId);

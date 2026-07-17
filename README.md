@@ -46,7 +46,7 @@ A personal flight tracker that monitors flight status in real time and sends Tel
 
 ```bash
 cp .env.example .env
-# Fill in DATABASE_URL, AEROAPI_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+# Fill in DATABASE_URL, AEROAPI_KEY, notification credentials, and Fly.io credentials
 ```
 
 | Variable | Description |
@@ -55,6 +55,9 @@ cp .env.example .env
 | `AEROAPI_KEY` | FlightAware AeroAPI key |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token |
 | `TELEGRAM_CHAT_ID` | Telegram chat ID to send notifications to |
+| `RESEND_API_KEY` | Resend API key with sending permission |
+| `EMAIL_FROM` | Sender on a verified Resend domain |
+| `EMAIL_TO` | Email recipient; comma-separated addresses are supported |
 
 ### 2. Set up database
 
@@ -70,12 +73,12 @@ fly auth login
 
 # Web app
 fly launch --no-deploy
-fly secrets set DATABASE_URL="..." AEROAPI_KEY="..." TELEGRAM_BOT_TOKEN="..." TELEGRAM_CHAT_ID="..." --app myflighttracker
+fly secrets set DATABASE_URL="..." AEROAPI_KEY="..." TELEGRAM_BOT_TOKEN="..." TELEGRAM_CHAT_ID="..." RESEND_API_KEY="..." EMAIL_FROM="..." EMAIL_TO="..." --app myflighttracker
 fly deploy
 
 # Worker
 fly launch --config fly.worker.toml --no-deploy
-fly secrets set DATABASE_URL="..." AEROAPI_KEY="..." TELEGRAM_BOT_TOKEN="..." TELEGRAM_CHAT_ID="..." --app myflighttracker-worker
+fly secrets set DATABASE_URL="..." AEROAPI_KEY="..." TELEGRAM_BOT_TOKEN="..." TELEGRAM_CHAT_ID="..." RESEND_API_KEY="..." EMAIL_FROM="..." EMAIL_TO="..." --app myflighttracker-worker
 fly deploy --config fly.worker.toml
 ```
 
