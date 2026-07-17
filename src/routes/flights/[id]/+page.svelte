@@ -78,6 +78,18 @@
 		return tz ? t : `${t} UTC`;
 	}
 
+	function formatDuration(
+		start: string | null | undefined,
+		end: string | null | undefined,
+	): string | null {
+		if (!start || !end) return null;
+		const minutes = Math.round(
+			(new Date(end).getTime() - new Date(start).getTime()) / 60000,
+		);
+		if (minutes <= 0) return null;
+		return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+	}
+
 	const LAYERS = [
 		{
 			id: 'default',
@@ -356,6 +368,22 @@
 							<span>Est. arrival</span>
 							<span>{formatTime(flight.status.estimatedArr ?? flight.status.scheduledArr, flight.status.arrivalTz)}</span>
 						</div>
+					{/if}
+					{#if flight.status.status === 'arrived'}
+						{@const scheduledTotal = formatDuration(flight.status.scheduledDep, flight.status.scheduledArr)}
+						{@const actualTotal = formatDuration(flight.status.actualDep, flight.status.actualArr)}
+						{#if scheduledTotal}
+							<div class="detail-row">
+								<span>Scheduled total</span>
+								<span>{scheduledTotal}</span>
+							</div>
+						{/if}
+						{#if actualTotal}
+							<div class="detail-row">
+								<span>Actual total</span>
+								<span>{actualTotal}</span>
+							</div>
+						{/if}
 					{/if}
 					{#if flight.status.departureGate}
 						<div class="detail-row">
