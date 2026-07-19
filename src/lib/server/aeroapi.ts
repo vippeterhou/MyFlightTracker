@@ -64,10 +64,17 @@ export async function getFlightsByIdent(flightId: string, date: Date): Promise<A
 	const apiKey = process.env.AEROAPI_KEY;
 	if (!apiKey) throw new Error('AEROAPI_KEY not set');
 
-	const dateStr = date.toISOString().split('T')[0];
-	// Search a window: from midnight to end of that day
-	const start = `${dateStr}T00:00:00Z`;
-	const end = `${dateStr}T23:59:59Z`;
+	// The user's entered date is a departure-LOCAL calendar day, but this endpoint filters
+	// by UTC. A local-day departure can fall on the UTC day before or after (e.g. an evening
+	// Americas departure at 00:50Z lands on the next UTC date; an early Asia departure on the
+	// previous one), so query a widened window (day-1 … day+1). Callers select the right
+	// instance by origin-LOCAL date (findInitialFlightMatches) or stored selection
+	// (getFlightByIdent). Without this, a July-18-local evening flight is missed and the
+	// July-17-local leg in the July-18 UTC window is wrongly picked instead.
+	const startStr = new Date(date.getTime() - 86400000).toISOString().split('T')[0];
+	const endStr = new Date(date.getTime() + 86400000).toISOString().split('T')[0];
+	const start = `${startStr}T00:00:00Z`;
+	const end = `${endStr}T23:59:59Z`;
 
 	const url = `${AEROAPI_BASE}/flights/${encodeURIComponent(flightId)}?start=${start}&end=${end}`;
 
