@@ -23,8 +23,34 @@ const TERMINAL_STATUSES = new Set(['arrived', 'cancelled']);
 const FUTURE_POLL_WINDOW_DAYS = 1;
 
 export async function pollFlightStatuses(): Promise<void> {
+	// Skip terminal flights at the DB level (they carry the heavy trackData blob and are
+	// only skipped in-memory otherwise) and select just the fields this loop reads, so we
+	// never pull trackData over the wire every cycle. Flights with no status row yet
+	// (newly added, never polled) are kept via the `is: null` branch.
 	const flights = await db.trackedFlight.findMany({
-		include: { status: true },
+		where: {
+			OR: [
+				{ status: { is: null } },
+				{ status: { status: { notIn: [...TERMINAL_STATUSES] } } },
+			],
+		},
+		select: {
+			id: true,
+			flightId: true,
+			date: true,
+			label: true,
+			status: {
+				select: {
+					status: true,
+					scheduledDep: true,
+					departureTz: true,
+					faFlightId: true,
+					departureAirport: true,
+					arrivalAirport: true,
+					boardingAt: true,
+				},
+			},
+		},
 	});
 
 	const now = Date.now();
