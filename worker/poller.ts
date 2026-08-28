@@ -171,10 +171,7 @@ export async function pollFlightStatuses(): Promise<void> {
 				update: statusData,
 			});
 
-			// Only log genuine status transitions; skip same-status repeats (e.g. airborne → airborne).
-			if (prevStatus !== newStatus) {
-				await logger.info(`Status: ${prevStatus ?? 'new'} → ${newStatus}`, flight.flightId);
-			}
+			await logger.info(`Status: ${prevStatus ?? 'new'} → ${newStatus}`, flight.flightId);
 
 			if (prevStatus !== newStatus && NOTIFY_STATUSES.has(newStatus)) {
 				const msg = buildNotification(flight.flightId, newStatus, {
