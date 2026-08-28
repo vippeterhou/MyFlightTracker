@@ -247,7 +247,7 @@
 </script>
 
 <svelte:head>
-	<title>{flight.flightId} — Flight Tracker</title>
+	<title>{flight.flightId} — Contrail</title>
 </svelte:head>
 
 <div class="page">

@@ -29,7 +29,7 @@
 <main>
 	<header>
 		<a href="/" class="brand">
-			✈️&nbsp; Flight Tracker
+			<img src="/favicon.svg" alt="" class="brand-icon" />Contrail
 			<span class="status-dot-wrap" data-tooltip={tooltip}>
 				<span class="status-dot" class:active={workerRunning}></span>
 			</span>
@@ -74,6 +74,13 @@
 		font-size: 1.6rem;
 		font-weight: 700;
 		transition: opacity 0.15s;
+	}
+
+	.brand-icon {
+		width: 1.5em;
+		height: 1.5em;
+		border-radius: 6px;
+		display: block;
 	}
 
 	.nav-logs {

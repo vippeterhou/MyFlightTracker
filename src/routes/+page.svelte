@@ -115,7 +115,7 @@
 </script>
 
 <svelte:head>
-	<title>Flight Tracker</title>
+	<title>Contrail</title>
 </svelte:head>
 
 <div class="page">

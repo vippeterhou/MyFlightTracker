@@ -78,7 +78,7 @@
 </script>
 
 <svelte:head>
-	<title>Logs — Flight Tracker</title>
+	<title>Logs — Contrail</title>
 </svelte:head>
 
 <div class="page">
