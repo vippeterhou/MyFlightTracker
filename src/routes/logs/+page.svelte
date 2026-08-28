@@ -148,12 +148,19 @@
 		}),
 	);
 
-	// Worker heartbeat: the worker stamps `lastCheckedAt` every ~10-min cycle,
-	// even when no flight needs polling. Allow ~2.5 cycles of slack before calling
-	// it idle so a single late/restarting cycle doesn't flip the indicator.
-	let pollFresh = $derived(
-		data.lastCheckedAt ? now - Date.parse(data.lastCheckedAt) < 25 * 60_000 : false,
-	);
+	// Keep the worker state live while the page is open (e.g. an external stop or
+	// crash), mirroring the header dot's 60s cadence, so the label below reflects
+	// reality rather than only the value from page load.
+	$effect(() => {
+		const t = setInterval(async () => {
+			if (workerLoading) return; // don't clobber an in-flight toggle
+			try {
+				const res = await fetch('/api/status');
+				if (res.ok) workerState = (await res.json()).workerState;
+			} catch {}
+		}, 60_000);
+		return () => clearInterval(t);
+	});
 </script>
 
 <svelte:head>
@@ -214,9 +221,9 @@
 			<h2>Active flights</h2>
 			<span class="active-count">{active.length}</span>
 			{#if data.lastCheckedAt}
-				<span class="poll-status" class:ok={pollFresh}>
+				<span class="poll-status" class:ok={workerState === 'running'}>
 					<span class="poll-dot"></span>
-					{pollFresh ? 'Worker active' : 'Worker idle'} · last checked {relTime(data.lastCheckedAt)}
+					{workerState === 'running' ? 'Worker active' : workerState === 'stopped' ? 'Worker stopped' : 'Worker unknown'} · last checked {relTime(data.lastCheckedAt)}
 				</span>
 			{/if}
 		</div>
