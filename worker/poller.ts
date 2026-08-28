@@ -69,7 +69,8 @@ export async function pollFlightStatuses(): Promise<void> {
 			if (hoursUntil > 4) {
 				if (f.status?.departureTz) {
 					// Full live data (known airport timezone) — an hour countdown is meaningful.
-					await logger.info(`Skipping — departs in ${hoursUntil.toFixed(1)}h`, f.flightId);
+					// Muted to cut log noise; delete this line once verified in prod for a while.
+					// await logger.info(`Skipping — departs in ${hoursUntil.toFixed(1)}h`, f.flightId);
 				} else {
 					// Schedule-only data has no timezone, so an hour countdown would be
 					// misleading — report the scheduled date/time (in UTC) instead.
@@ -170,7 +171,10 @@ export async function pollFlightStatuses(): Promise<void> {
 				update: statusData,
 			});
 
-			await logger.info(`Status: ${prevStatus ?? 'new'} → ${newStatus}`, flight.flightId);
+			// Only log genuine status transitions; skip same-status repeats (e.g. airborne → airborne).
+			if (prevStatus !== newStatus) {
+				await logger.info(`Status: ${prevStatus ?? 'new'} → ${newStatus}`, flight.flightId);
+			}
 
 			if (prevStatus !== newStatus && NOTIFY_STATUSES.has(newStatus)) {
 				const msg = buildNotification(flight.flightId, newStatus, {
