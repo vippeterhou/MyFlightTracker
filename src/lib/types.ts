@@ -33,7 +33,8 @@ export interface FlightStatus {
 	aircraftType: string | null;
 	baggageClaim: string | null;
 	faFlightId: string | null;
-	trackData: { lat: number; lon: number; heading: number }[] | null;
+	trackData?: { lat: number; lon: number; heading: number }[] | null;
+	hasTrack?: boolean;
 	statusChangedAt: string;
 	lastChecked: string;
 	updatedAt: string;

@@ -162,7 +162,13 @@
 <div class="page">
 	<a href="/" class="back">← All flights</a>
 
-	<AllRoutesMap routes={data.routes} />
+	{#await data.routes}
+		<div class="map-placeholder">Loading route map…</div>
+	{:then routes}
+		<AllRoutesMap {routes} />
+	{:catch}
+		<div class="map-placeholder">Couldn't load the route map.</div>
+	{/await}
 
 	<div class="page-header">
 		<h1>Poll Logs</h1>
@@ -287,6 +293,19 @@
 		border-radius: 12px;
 		padding: 16px 20px;
 		margin-bottom: 24px;
+	}
+
+	.map-placeholder {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 540px;
+		background: white;
+		border: 1px solid #e5e7eb;
+		border-radius: 12px;
+		margin-bottom: 24px;
+		color: #9ca3af;
+		font-size: 0.9rem;
 	}
 
 	.active-header {

@@ -32,14 +32,9 @@ export interface ActiveFlight {
 const TERMINAL_STATUSES = ['arrived', 'cancelled'];
 
 export const load: PageServerLoad = async () => {
-	const [logs, workerState, flightsWithTrack, incomplete] = await Promise.all([
+	const [logs, workerState, incomplete] = await Promise.all([
 		db.pollLog.findMany({ orderBy: { timestamp: 'desc' }, take: 200 }),
 		getWorkerState(),
-		db.trackedFlight.findMany({
-			where: { status: { trackData: { not: { equals: null } } } },
-			include: { status: true },
-			orderBy: { date: 'desc' },
-		}),
 		db.trackedFlight.findMany({
 			where: {
 				OR: [
@@ -70,20 +65,31 @@ export const load: PageServerLoad = async () => {
 		}),
 	]);
 
-	const routes: FlightRoute[] = flightsWithTrack
-		.filter((f) => Array.isArray(f.status?.trackData) && (f.status!.trackData as unknown[]).length > 0)
-		.map((f) => ({
-			flightId: f.flightId,
-			label: f.label,
-			date: f.date.toISOString(),
-			departureAirport: f.status!.departureAirport,
-			arrivalAirport: f.status!.arrivalAirport,
-			track: (f.status!.trackData as { lat: number; lon: number; heading: number }[]).map((p) => ({
-				lat: p.lat,
-				lon: p.lon,
-				heading: p.heading,
-			})),
-		}));
+	// Streamed (returned unawaited): the route map pulls every flight's ~1 MB of
+	// track points, so we let the page shell + logs render first and fill the map
+	// in once this resolves. SvelteKit 2 streams top-level promises we don't await.
+	const routes: Promise<FlightRoute[]> = db.trackedFlight
+		.findMany({
+			where: { status: { trackData: { not: { equals: null } } } },
+			include: { status: true },
+			orderBy: { date: 'desc' },
+		})
+		.then((flightsWithTrack) =>
+			flightsWithTrack
+				.filter(
+					(f) => Array.isArray(f.status?.trackData) && (f.status!.trackData as unknown[]).length > 0,
+				)
+				.map((f) => ({
+					flightId: f.flightId,
+					label: f.label,
+					date: f.date.toISOString(),
+					departureAirport: f.status!.departureAirport,
+					arrivalAirport: f.status!.arrivalAirport,
+					track: (f.status!.trackData as { lat: number; lon: number; heading: number }[]).map(
+						(p) => ({ lat: p.lat, lon: p.lon, heading: p.heading }),
+					),
+				})),
+		);
 
 	const activeFlights: ActiveFlight[] = incomplete.map((f) => ({
 		id: f.id,

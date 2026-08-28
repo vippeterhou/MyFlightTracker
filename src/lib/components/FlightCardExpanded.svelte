@@ -65,10 +65,7 @@
 	let actArr = $derived(fmtTime(flight.status?.actualArr, flight.status?.arrivalTz));
 	let totalDur = $derived(duration(flight.status?.actualDep, flight.status?.actualArr));
 
-	let hasTrack = $derived.by(() => {
-		const td = flight.status?.trackData;
-		return Array.isArray(td) && td.length >= 2;
-	});
+	let hasTrack = $derived(flight.status?.hasTrack ?? false);
 
 	let mapEl = $state<HTMLDivElement | undefined>(undefined);
 	let miniMap: import('leaflet').Map | undefined;
@@ -102,12 +99,15 @@
 		let mounted = true;
 
 		(async () => {
-			const [{ default: L }] = await Promise.all([
+			const [{ default: L }, , trackRes] = await Promise.all([
 				import('leaflet'),
 				import('leaflet/dist/leaflet.css'),
+				// Track points aren't shipped with the dashboard load — fetch on demand.
+				fetch(`/api/flights/${flight.id}/track`).then((r) => (r.ok ? r.json() : { track: [] })),
 			]);
 
-			if (!mounted || !mapEl) return;
+			const track = (trackRes.track ?? []) as { lat: number; lon: number }[];
+			if (!mounted || !mapEl || track.length < 2) return;
 
 			miniMap = L.map(mapEl, {
 				zoomControl: false,
@@ -124,7 +124,6 @@
 				maxZoom: 19,
 			}).addTo(miniMap);
 
-			const track = flight.status!.trackData as { lat: number; lon: number }[];
 			const latlngs = normalizeTrack(track);
 
 			L.polyline(latlngs, { color, weight: 2.5, opacity: 0.8 }).addTo(miniMap);
