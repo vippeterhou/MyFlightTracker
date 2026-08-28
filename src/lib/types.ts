@@ -34,6 +34,7 @@ export interface FlightStatus {
 	baggageClaim: string | null;
 	faFlightId: string | null;
 	trackData: { lat: number; lon: number; heading: number }[] | null;
+	statusChangedAt: string;
 	lastChecked: string;
 	updatedAt: string;
 }

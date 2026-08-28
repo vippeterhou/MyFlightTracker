@@ -176,6 +176,8 @@ async function applyAeroFlight(flight: FlightWithStatus, aero: AeroFlight): Prom
 
 	const shared = {
 		status: newStatus,
+		// Stamp the moment of any status transition so the UI can show how long it's held.
+		...(flight.status?.status !== newStatus ? { statusChangedAt: new Date() } : {}),
 		departureAirport: aero.origin?.code_iata ?? null,
 		arrivalAirport: aero.destination?.code_iata ?? null,
 		departureCity: aero.origin?.city ?? null,
@@ -237,6 +239,8 @@ async function applyScheduleFlight(
 
 	const shared = {
 		status: 'scheduled',
+		// Stamp the moment of any status transition so the UI can show how long it's held.
+		...(flight.status?.status !== 'scheduled' ? { statusChangedAt: new Date() } : {}),
 		departureAirport,
 		arrivalAirport,
 		// Schedules omit timezones, so resolve them from the bundled IATA→IANA dataset

@@ -136,6 +136,8 @@ export async function pollFlightStatuses(): Promise<void> {
 
 			const statusData = {
 				status: newStatus,
+				// Stamp the moment of any status transition so the UI can show how long it's held.
+				...(prevStatus !== newStatus ? { statusChangedAt: new Date() } : {}),
 				boardingAt: newStatus === 'boarding' && prevStatus !== 'boarding'
 					? new Date()
 					: (flight.status?.boardingAt ?? null),

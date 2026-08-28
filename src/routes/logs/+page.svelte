@@ -75,6 +75,84 @@
 			hour: '2-digit', minute: '2-digit', second: '2-digit',
 		});
 	}
+
+	// ── Active flights section ────────────────────────────────────────────────
+	// Live-ish clock so countdowns/relative times stay fresh without a reload.
+	let now = $state(Date.now());
+	$effect(() => {
+		const t = setInterval(() => (now = Date.now()), 30_000);
+		return () => clearInterval(t);
+	});
+
+	const STATUS_COLOR: Record<string, string> = {
+		scheduled: '#6b7280',
+		boarding:  '#7c3aed',
+		departed:  '#2563eb',
+		airborne:  '#0ea5e9',
+		landed:    '#059669',
+		delayed:   '#d97706',
+		diverted:  '#dc2626',
+	};
+	const STATUS_RANK: Record<string, number> = {
+		airborne: 0, departed: 1, boarding: 2, landed: 3, delayed: 4, diverted: 5, scheduled: 6,
+	};
+
+	type Active = (typeof data.activeFlights)[number];
+
+	function depTime(f: Active): number {
+		return Date.parse(f.estimatedDep ?? f.scheduledDep ?? f.date);
+	}
+	function hasDeparted(f: Active): boolean {
+		return !!f.actualDep || ['departed', 'airborne', 'landed', 'diverted'].includes(f.status ?? '');
+	}
+
+	function fmtDur(ms: number): string {
+		const m = Math.round(ms / 60_000);
+		if (m < 60) return `${m}m`;
+		const h = Math.floor(m / 60), mm = m % 60;
+		if (h < 24) return mm ? `${h}h ${mm}m` : `${h}h`;
+		const d = Math.floor(h / 24), hh = h % 24;
+		return hh ? `${d}d ${hh}h` : `${d}d`;
+	}
+	function relTime(iso: string): string {
+		const diff = now - Date.parse(iso);
+		return diff < 60_000 ? 'just now' : `${fmtDur(diff)} ago`;
+	}
+
+	// Primary timing line: countdown to departure before takeoff, to arrival after.
+	function timing(f: Active): string {
+		if (!hasDeparted(f)) {
+			const t = Date.parse(f.estimatedDep ?? f.scheduledDep ?? '');
+			if (!Number.isNaN(t)) return t > now ? `departs in ${fmtDur(t - now)}` : 'departure due';
+			return '';
+		}
+		const t = Date.parse(f.estimatedArr ?? f.scheduledArr ?? '');
+		if (!Number.isNaN(t) && t > now) return `arrives in ${fmtDur(t - now)}`;
+		if (f.status === 'landed') return 'landed — awaiting gate';
+		return '';
+	}
+
+	// Current status paired with how long it has held (from the last transition).
+	function freshness(f: Active): string {
+		if (!f.statusChangedAt) return 'awaiting first poll';
+		const label = f.status ?? 'pending';
+		const held = now - Date.parse(f.statusChangedAt);
+		return `${label} · ${held < 60_000 ? 'just now' : fmtDur(held)}`;
+	}
+
+	let active = $derived(
+		[...data.activeFlights].sort((a, b) => {
+			const ra = STATUS_RANK[a.status ?? ''] ?? 7;
+			const rb = STATUS_RANK[b.status ?? ''] ?? 7;
+			return ra !== rb ? ra - rb : depTime(a) - depTime(b);
+		}),
+	);
+
+	// Worker heartbeat: the most recent poll-log timestamp. Fresh (<15m) means the
+	// 10-minute worker loop is running normally.
+	let pollFresh = $derived(
+		data.lastPollAt ? now - Date.parse(data.lastPollAt) < 15 * 60_000 : false,
+	);
 </script>
 
 <svelte:head>
@@ -124,6 +202,43 @@
 		<ApiUsageChart {granularity} />
 	</div>
 
+	<div class="active-section">
+		<div class="active-header">
+			<h2>Active flights</h2>
+			<span class="active-count">{active.length}</span>
+			{#if data.lastPollAt}
+				<span class="poll-status" class:ok={pollFresh}>
+					<span class="poll-dot"></span>
+					{pollFresh ? 'Worker active' : 'Worker idle'} · last poll {relTime(data.lastPollAt)}
+				</span>
+			{/if}
+		</div>
+		{#if active.length === 0}
+			<p class="active-empty">No flights in progress or upcoming.</p>
+		{:else}
+			<div class="active-list">
+				{#each active as f (f.id)}
+					<div class="active-row">
+						<div class="active-body">
+							<div class="line1">
+								<span class="sdot" style="background: {STATUS_COLOR[f.status ?? ''] ?? '#9ca3af'}"></span>
+								<span class="fid">{f.flightId}</span>
+								{#if f.departureAirport && f.arrivalAirport}
+									<span class="route">{f.departureAirport} → {f.arrivalAirport}</span>
+								{/if}
+								{#if f.label}<span class="flabel">{f.label}</span>{/if}
+							</div>
+							<div class="line2">
+								{#if timing(f)}<span class="timing">{timing(f)}</span>{/if}
+								{#if freshness(f)}<span class="dot">·</span><span class="fresh">{freshness(f)}</span>{/if}
+							</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+		{/if}
+	</div>
+
 	<div class="filters">
 		{#each FILTERS as f}
 			<button
@@ -164,6 +279,138 @@
 		border-radius: 12px;
 		padding: 16px 20px;
 		margin-bottom: 24px;
+	}
+
+	.active-section {
+		background: white;
+		border: 1px solid #e5e7eb;
+		border-radius: 12px;
+		padding: 16px 20px;
+		margin-bottom: 24px;
+	}
+
+	.active-header {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 12px;
+	}
+
+	.poll-status {
+		margin-left: auto;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 0.75rem;
+		color: #9ca3af;
+	}
+
+	.poll-status.ok {
+		color: #059669;
+	}
+
+	.poll-dot {
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		background: #d1d5db;
+	}
+
+	.poll-status.ok .poll-dot {
+		background: #10b981;
+	}
+
+	.active-header h2 {
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: #374151;
+		margin: 0;
+	}
+
+	.active-count {
+		font-size: 0.7rem;
+		font-weight: 600;
+		color: #6b7280;
+		background: #f3f4f6;
+		border-radius: 999px;
+		padding: 1px 8px;
+	}
+
+	.active-empty {
+		font-size: 0.85rem;
+		color: #9ca3af;
+		margin: 0;
+	}
+
+	.active-list {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.active-row {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 10px 12px;
+		border: 1px solid #f0f1f3;
+		border-radius: 10px;
+	}
+
+	.sdot {
+		flex-shrink: 0;
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+		align-self: center;
+	}
+
+	.active-body {
+		min-width: 0;
+		flex: 1;
+	}
+
+	.line1 {
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
+		flex-wrap: wrap;
+	}
+
+	.fid {
+		font-weight: 700;
+		font-size: 0.95rem;
+		color: #111827;
+	}
+
+	.route {
+		font-size: 0.8rem;
+		color: #4b5563;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.flabel {
+		font-size: 0.78rem;
+		color: #9ca3af;
+	}
+
+	.line2 {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		flex-wrap: wrap;
+		margin-top: 3px;
+		font-size: 0.78rem;
+		color: #6b7280;
+	}
+
+	.timing {
+		color: #2563eb;
+		font-weight: 600;
+	}
+
+	.dot {
+		color: #d1d5db;
 	}
 
 	.usage-header {
