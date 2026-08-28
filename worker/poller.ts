@@ -16,6 +16,18 @@ const NOTIFY_STATUSES = new Set([
 
 const TERMINAL_STATUSES = new Set(['arrived', 'cancelled']);
 
+const HEARTBEAT_ID = 'worker';
+
+// Stamp a liveness marker every cycle. Kept separate from PollLog so the worker
+// can prove it ran even when every flight was skipped (nothing loggable to do).
+export async function recordHeartbeat(): Promise<void> {
+	await db.workerHeartbeat.upsert({
+		where: { id: HEARTBEAT_ID },
+		create: { id: HEARTBEAT_ID, lastRunAt: new Date() },
+		update: { lastRunAt: new Date() },
+	});
+}
+
 // AeroAPI's /flights/{ident} endpoint only reliably has live data ~2 days ahead. Since
 // f.date is midnight UTC of the flight day (not the actual departure time), gate on the
 // flight day being within this many days so the worker doesn't burn quota polling flights

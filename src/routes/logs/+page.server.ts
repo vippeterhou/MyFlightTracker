@@ -32,7 +32,7 @@ export interface ActiveFlight {
 const TERMINAL_STATUSES = ['arrived', 'cancelled'];
 
 export const load: PageServerLoad = async () => {
-	const [logs, workerState, incomplete] = await Promise.all([
+	const [logs, workerState, incomplete, heartbeat] = await Promise.all([
 		db.pollLog.findMany({ orderBy: { timestamp: 'desc' }, take: 200 }),
 		getWorkerState(),
 		db.trackedFlight.findMany({
@@ -63,6 +63,7 @@ export const load: PageServerLoad = async () => {
 			},
 			orderBy: { date: 'asc' },
 		}),
+		db.workerHeartbeat.findUnique({ where: { id: 'worker' } }),
 	]);
 
 	// Streamed (returned unawaited): the route map pulls every flight's ~1 MB of
@@ -112,6 +113,6 @@ export const load: PageServerLoad = async () => {
 		workerState,
 		routes,
 		activeFlights,
-		lastPollAt: logs[0]?.timestamp?.toISOString() ?? null,
+		lastCheckedAt: heartbeat?.lastRunAt?.toISOString() ?? null,
 	};
 };

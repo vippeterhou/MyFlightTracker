@@ -61,6 +61,15 @@ model FlightStatus {
   updatedAt   DateTime  @updatedAt
 }
 
+// Single-row liveness stamp. The worker updates `lastRunAt` at the end of every
+// poll cycle, even when no flight needed polling, so the UI can confirm the worker
+// is alive on its interval rather than inferring it from the last PollLog (which
+// is only written when there's something to report).
+model WorkerHeartbeat {
+  id        String   @id
+  lastRunAt DateTime @default(now())
+}
+
 model ApiCall {
   id         String   @id @default(cuid())
   timestamp  DateTime @default(now())

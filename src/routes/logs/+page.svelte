@@ -148,10 +148,11 @@
 		}),
 	);
 
-	// Worker heartbeat: the most recent poll-log timestamp. Fresh (<15m) means the
-	// 10-minute worker loop is running normally.
+	// Worker heartbeat: the worker stamps `lastCheckedAt` every ~10-min cycle,
+	// even when no flight needs polling. Allow ~2.5 cycles of slack before calling
+	// it idle so a single late/restarting cycle doesn't flip the indicator.
 	let pollFresh = $derived(
-		data.lastPollAt ? now - Date.parse(data.lastPollAt) < 15 * 60_000 : false,
+		data.lastCheckedAt ? now - Date.parse(data.lastCheckedAt) < 25 * 60_000 : false,
 	);
 </script>
 
@@ -212,10 +213,10 @@
 		<div class="active-header">
 			<h2>Active flights</h2>
 			<span class="active-count">{active.length}</span>
-			{#if data.lastPollAt}
+			{#if data.lastCheckedAt}
 				<span class="poll-status" class:ok={pollFresh}>
 					<span class="poll-dot"></span>
-					{pollFresh ? 'Worker active' : 'Worker idle'} · last poll {relTime(data.lastPollAt)}
+					{pollFresh ? 'Worker active' : 'Worker idle'} · last checked {relTime(data.lastCheckedAt)}
 				</span>
 			{/if}
 		</div>
