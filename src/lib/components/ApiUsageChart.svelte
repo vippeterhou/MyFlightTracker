@@ -274,7 +274,8 @@
 <style>
 	.summary {
 		display: flex;
-		gap: 20px;
+		flex-wrap: wrap;
+		gap: 8px 16px;
 		margin-bottom: 16px;
 	}
 

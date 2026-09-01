@@ -403,6 +403,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 12px;
 		margin-bottom: 12px;
 	}
 
@@ -625,5 +627,45 @@
 	:global(.route-tooltip) {
 		font-size: 0.75rem;
 		font-family: 'SF Mono', 'Fira Code', monospace;
+	}
+
+	@media (max-width: 640px) {
+		.map-card {
+			padding: 16px;
+		}
+
+		.map-header {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 10px;
+		}
+
+		.title-row {
+			justify-content: space-between;
+		}
+
+		.range-controls {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 8px;
+		}
+
+		.range-toggle {
+			flex-wrap: wrap;
+		}
+
+		.date-range {
+			flex-wrap: wrap;
+		}
+
+		.date-input {
+			flex: 1 1 130px;
+			min-width: 0;
+			box-sizing: border-box;
+		}
+
+		.date-sep {
+			display: none;
+		}
 	}
 </style>
