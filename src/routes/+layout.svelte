@@ -29,9 +29,15 @@
 <main>
 	<header>
 		<a href="/" class="brand">
-			<img src="/favicon.svg" alt="" class="brand-icon" />Contrail
-			<span class="status-dot-wrap" data-tooltip={tooltip}>
-				<span class="status-dot" class:active={workerRunning}></span>
+			<img src="/favicon.svg" alt="" class="brand-icon" />
+			<span class="brand-text">
+				<span class="brand-name">
+					Contrail
+					<span class="status-dot-wrap" data-tooltip={tooltip}>
+						<span class="status-dot" class:active={workerRunning}></span>
+					</span>
+				</span>
+				<span class="tagline">Your Flight. Tracked.</span>
 			</span>
 		</a>
 		<a href="/logs" class="nav-logs">Logs</a>
@@ -71,15 +77,36 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 12px;
-		font-size: 1.6rem;
-		font-weight: 700;
 		transition: opacity 0.15s;
 	}
 
+	.brand-text {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 2px;
+	}
+
+	.brand-name {
+		display: inline-flex;
+		align-items: center;
+		gap: 12px;
+		font-size: 1.6rem;
+		font-weight: 700;
+		line-height: 1;
+	}
+
+	.tagline {
+		font-size: 0.8rem;
+		font-weight: 500;
+		color: #9ca3af;
+		letter-spacing: 0.02em;
+	}
+
 	.brand-icon {
-		width: 1.5em;
-		height: 1.5em;
-		border-radius: 6px;
+		width: 44px;
+		height: 44px;
+		border-radius: 8px;
 		display: block;
 	}
 
