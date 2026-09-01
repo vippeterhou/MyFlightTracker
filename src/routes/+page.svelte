@@ -124,7 +124,11 @@
 			<p class="tagline">Track flights before your departure. Get notified from gate to gate on every status change — departed, airborne, landed, and more.</p>
 		</div>
 		<button class="btn" onclick={() => (showForm = !showForm)}>
-			{showForm ? 'Cancel' : '+ Track Flight'}
+			{#if showForm}
+				Cancel
+			{:else}
+				<span class="plus">+</span> Track Flight
+			{/if}
 		</button>
 	</header>
 
@@ -279,19 +283,41 @@
 	}
 
 	.btn {
-		padding: 10px 20px;
-		background: #3b82f6;
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
+		padding: 10px 22px 10px 16px;
+		background: linear-gradient(135deg, #4aa3ff, #1e6fd0);
 		color: white;
 		border: none;
 		border-radius: 8px;
 		font-size: 0.95rem;
 		font-weight: 600;
 		cursor: pointer;
-		transition: background 0.15s;
+		box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+		transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
 	}
 
 	.btn:hover {
-		background: #2563eb;
+		filter: brightness(1.05);
+		box-shadow: 0 4px 12px rgba(30, 111, 208, 0.3);
+		transform: translateY(-1px);
+	}
+
+	.btn:active {
+		transform: translateY(0);
+		box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+	}
+
+	.btn .plus {
+		display: inline-block;
+		font-size: 1.3rem;
+		line-height: 1;
+		transition: transform 0.15s;
+	}
+
+	.btn:hover .plus {
+		transform: scale(1.3);
 	}
 
 	.btn:disabled {

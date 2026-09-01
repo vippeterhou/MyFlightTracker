@@ -40,7 +40,6 @@
 				<span class="tagline">Your Flight. Tracked.</span>
 			</span>
 		</a>
-		<a href="/logs" class="nav-logs">Logs</a>
 	</header>
 	{@render children()}
 </main>
@@ -108,18 +107,6 @@
 		height: 44px;
 		border-radius: 8px;
 		display: block;
-	}
-
-	.nav-logs {
-		grid-column: 3;
-		justify-self: end;
-		font-size: 0.85rem;
-		color: #9ca3af;
-		transition: color 0.15s;
-	}
-
-	.nav-logs:hover {
-		color: #111827;
 	}
 
 	.brand:hover {

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import FlightTimeline from '$lib/components/FlightTimeline.svelte';
+	import BackButton from '$lib/components/BackButton.svelte';
 	import type { PageData } from './$types';
 	import type { TrackedFlight } from '$lib/types';
 	import type { TrackPoint } from '$lib/server/aeroapi';
@@ -251,7 +252,7 @@
 </svelte:head>
 
 <div class="page">
-	<a href="/" class="back">← All flights</a>
+	<BackButton />
 
 	<div class="header">
 		<div>
@@ -416,18 +417,6 @@
 </div>
 
 <style>
-	.back {
-		display: inline-block;
-		margin-bottom: 20px;
-		color: #6b7280;
-		font-size: 0.9rem;
-		transition: color 0.15s;
-	}
-
-	.back:hover {
-		color: #111827;
-	}
-
 	.header {
 		display: flex;
 		justify-content: space-between;
@@ -528,7 +517,7 @@
 		color: #6b7280;
 	}
 
-	.arrow {
+	.airports .arrow {
 		color: #9ca3af;
 		font-size: 1.5rem;
 	}

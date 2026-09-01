@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import ApiUsageChart from '$lib/components/ApiUsageChart.svelte';
 	import AllRoutesMap from '$lib/components/AllRoutesMap.svelte';
+	import BackButton from '$lib/components/BackButton.svelte';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
 
@@ -145,7 +146,7 @@
 </svelte:head>
 
 <div class="page">
-	<a href="/" class="back">← All flights</a>
+	<BackButton />
 
 	{#await data.routes}
 		<div class="map-placeholder">Loading route map…</div>
@@ -433,16 +434,6 @@
 		display: flex;
 		gap: 6px;
 	}
-
-	.back {
-		display: inline-block;
-		margin-bottom: 20px;
-		color: #6b7280;
-		font-size: 0.9rem;
-		transition: color 0.15s;
-	}
-
-	.back:hover { color: #111827; }
 
 	.page-header {
 		margin-bottom: 20px;
