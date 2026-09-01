@@ -57,7 +57,7 @@ Two independently deployed services share one Supabase (PostgreSQL) database:
 
 - **AeroAPI** (`src/lib/server/aeroapi.ts`) — flight status. Auth via `x-apikey` header using `AEROAPI_KEY`. Free tier: 500 req/month, 10 QPM. Rate limiter enforces 6.5s between calls.
 - **Telegram Bot API** (`src/lib/server/telegram.ts`) — notifications. Requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. Only fires on status transitions; excludes 'scheduled'.
-- **Fly.io Machines API** (`src/lib/server/flyio.ts`) — reads worker machine state and supports manual start/stop from the `/logs` page. Requires `FLY_API_TOKEN` and `FLY_WORKER_APP`. Returns `'unknown'` silently if vars are absent (dev).
+- **Fly.io Machines API** (`src/lib/server/flyio.ts`) — reads worker machine state (`getWorkerState`) for the header status dot and the `/logs` active-flights indicator. Requires `FLY_API_TOKEN` and `FLY_WORKER_APP`. Returns `'unknown'` silently if vars are absent (dev).
 
 ## Database
 
@@ -75,7 +75,7 @@ DATABASE_URL=
 AEROAPI_KEY=
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
-FLY_API_TOKEN=       # Fly.io auth token — for worker state/start/stop from /logs
+FLY_API_TOKEN=       # Fly.io auth token — for reading worker machine state
 FLY_WORKER_APP=      # Worker app name, e.g. myflighttracker-worker
 ```
 

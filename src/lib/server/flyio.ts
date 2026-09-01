@@ -38,33 +38,3 @@ export async function getWorkerState(): Promise<WorkerState> {
 	}
 	*/
 }
-
-export async function startWorker(): Promise<void> {
-	const cfg = config();
-	if (!cfg) return;
-	const machines = await listMachines(cfg.token, cfg.app);
-	for (const m of machines) {
-		if (m.state === 'stopped') {
-			const res = await fetch(`${FLY_API}/apps/${cfg.app}/machines/${m.id}/start`, {
-				method: 'POST',
-				headers: { Authorization: `Bearer ${cfg.token}` },
-			});
-			if (!res.ok) throw new Error(`Failed to start machine ${m.id}: ${res.status}`);
-		}
-	}
-}
-
-export async function stopWorker(): Promise<void> {
-	const cfg = config();
-	if (!cfg) return;
-	const machines = await listMachines(cfg.token, cfg.app);
-	for (const m of machines) {
-		if (m.state === 'started' || m.state === 'starting') {
-			const res = await fetch(`${FLY_API}/apps/${cfg.app}/machines/${m.id}/stop`, {
-				method: 'POST',
-				headers: { Authorization: `Bearer ${cfg.token}` },
-			});
-			if (!res.ok) throw new Error(`Failed to stop machine ${m.id}: ${res.status}`);
-		}
-	}
-}
