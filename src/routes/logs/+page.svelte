@@ -161,7 +161,10 @@
 
 	<div class="usage-section">
 		<div class="usage-header">
-			<h2>API Usage</h2>
+			<div class="usage-title">
+				<h2>API Usage</h2>
+				<span class="tz-note">times in UTC</span>
+			</div>
 			<div class="granularity-toggle">
 				{#each GRANULARITIES as g}
 					<button
@@ -411,6 +414,19 @@
 		font-weight: 600;
 		color: #374151;
 		margin: 0;
+	}
+
+	.usage-title {
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+	}
+
+	.tz-note {
+		font-size: 0.7rem;
+		font-weight: 500;
+		color: #9ca3af;
+		letter-spacing: 0.02em;
 	}
 
 	.granularity-toggle {
