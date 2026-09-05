@@ -20,12 +20,6 @@ async function listMachines(token: string, app: string): Promise<Machine[]> {
 }
 
 export async function getWorkerState(): Promise<WorkerState> {
-	// TEMP PERF PROBE: skip the live Fly Machines API call (~0.5-0.9s) and return a
-	// dummy 'running' to measure whether this call is the page-load bottleneck.
-	// REVERT this stub (restore the block below) for real worker-state reporting.
-	return 'running';
-
-	/* REAL IMPLEMENTATION — restore when done probing:
 	const cfg = config();
 	if (!cfg) return 'unknown';
 	try {
@@ -36,5 +30,4 @@ export async function getWorkerState(): Promise<WorkerState> {
 	} catch {
 		return 'unknown';
 	}
-	*/
 }
