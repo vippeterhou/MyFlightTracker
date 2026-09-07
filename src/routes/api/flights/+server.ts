@@ -9,6 +9,11 @@ import {
 	buildNotificationSubject,
 	sendNotifications,
 } from '$lib/server/notifications';
+import {
+	ApiValidationError,
+	parseCreateFlightInput,
+	readJsonObject,
+} from '$lib/server/apiValidation';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {
@@ -20,34 +25,28 @@ export const GET: RequestHandler = async () => {
 };
 
 export const POST: RequestHandler = async ({ request }) => {
-	const body = await request.json();
-	const flightId: string = body.flightId;
-	const date: string = body.date;
-	const label: string | undefined = body.label;
-	const selectedCandidateId: string | undefined = body.selectedCandidateId;
-
-	if (!flightId?.trim() || !date) {
-		return json({ error: 'flightId and date are required' }, { status: 400 });
-	}
-
-	const normalizedFlightId = flightId.toUpperCase().replace(/\s+/g, '');
-	const flightDate = new Date(date);
-	if (Number.isNaN(flightDate.getTime())) {
-		return json({ error: 'date must be valid' }, { status: 400 });
+	let input;
+	try {
+		input = parseCreateFlightInput(await readJsonObject(request));
+	} catch (err) {
+		if (err instanceof ApiValidationError) {
+			return json({ error: err.message }, { status: 400 });
+		}
+		throw err;
 	}
 
 	let matches;
 	try {
-		matches = await findInitialFlightMatches(normalizedFlightId, flightDate);
+		matches = await findInitialFlightMatches(input.flightId, input.date);
 	} catch (err) {
 		await logger.error(
 			`Initial flight lookup failed: ${(err as Error).message}`,
-			normalizedFlightId,
+			input.flightId,
 		);
 		return json({ error: 'Unable to look up this flight right now' }, { status: 502 });
 	}
 
-	if (matches.length > 1 && !selectedCandidateId) {
+	if (matches.length > 1 && !input.selectedCandidateId) {
 		return json(
 			{
 				requiresSelection: true,
@@ -57,18 +56,18 @@ export const POST: RequestHandler = async ({ request }) => {
 		);
 	}
 
-	const selectedMatch = selectedCandidateId
-		? matches.find((match) => match.candidate.id === selectedCandidateId)
+	const selectedMatch = input.selectedCandidateId
+		? matches.find((match) => match.candidate.id === input.selectedCandidateId)
 		: matches[0];
-	if (selectedCandidateId && !selectedMatch) {
+	if (input.selectedCandidateId && !selectedMatch) {
 		return json({ error: 'The selected flight segment is no longer available' }, { status: 400 });
 	}
 
 	const flight = await db.trackedFlight.create({
 		data: {
-			flightId: normalizedFlightId,
-			date: flightDate,
-			label: label?.trim() || null,
+			flightId: input.flightId,
+			date: input.date,
+			label: input.label,
 		},
 	});
 
