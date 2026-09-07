@@ -5,6 +5,7 @@
 	import type { TrackedFlight } from '$lib/types';
 	import type { TrackPoint } from '$lib/server/aeroapi';
 	import { flightDateLabel } from '$lib/dateFormat';
+	import { FLIGHT_LABEL_MAX_LENGTH } from '$lib/inputLimits';
 
 	let { data }: { data: PageData } = $props();
 	let flight = $derived(data.flight as TrackedFlight);
@@ -262,6 +263,7 @@
 					<input
 						class="label-input"
 						bind:value={labelDraft}
+						maxlength={FLIGHT_LABEL_MAX_LENGTH}
 						onkeydown={handleLabelKey}
 						onblur={saveLabel}
 						placeholder="e.g. Mom's flight"

@@ -1,6 +1,10 @@
+import {
+	FLIGHT_LABEL_MAX_LENGTH,
+	TODO_TEXT_MAX_LENGTH,
+} from '$lib/inputLimits';
+
 const FLIGHT_ID_PATTERN = /^(?=[A-Z0-9]*[A-Z])[A-Z0-9]{2,4}\d{1,4}[A-Z]?$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const MAX_LABEL_LENGTH = 100;
 const MAX_CANDIDATE_ID_LENGTH = 500;
 
 type JsonObject = Record<string, unknown>;
@@ -21,6 +25,15 @@ export interface CreateFlightInput {
 
 export interface UpdateFlightInput {
 	label: string | null;
+}
+
+export interface CreateTodoInput {
+	text: string;
+}
+
+export interface UpdateTodoInput {
+	text?: string;
+	completed?: boolean;
 }
 
 export async function readJsonObject(request: Request): Promise<JsonObject> {
@@ -73,6 +86,29 @@ export function parseUpdateFlightInput(body: JsonObject): UpdateFlightInput {
 	return { label: parseLabel(body.label, true) };
 }
 
+export function parseCreateTodoInput(body: JsonObject): CreateTodoInput {
+	return { text: parseTodoText(body.text) };
+}
+
+export function parseUpdateTodoInput(body: JsonObject): UpdateTodoInput {
+	const input: UpdateTodoInput = {};
+
+	if (Object.hasOwn(body, 'text')) {
+		input.text = parseTodoText(body.text);
+	}
+	if (Object.hasOwn(body, 'completed')) {
+		if (typeof body.completed !== 'boolean') {
+			throw new ApiValidationError('completed must be a boolean');
+		}
+		input.completed = body.completed;
+	}
+	if (input.text === undefined && input.completed === undefined) {
+		throw new ApiValidationError('text or completed is required');
+	}
+
+	return input;
+}
+
 function parseLabel(value: unknown, required: boolean): string | null {
 	if (value === undefined && !required) return null;
 	if (value === null) return null;
@@ -81,8 +117,10 @@ function parseLabel(value: unknown, required: boolean): string | null {
 	}
 
 	const label = value.trim();
-	if (label.length > MAX_LABEL_LENGTH) {
-		throw new ApiValidationError(`label must be ${MAX_LABEL_LENGTH} characters or fewer`);
+	if (label.length > FLIGHT_LABEL_MAX_LENGTH) {
+		throw new ApiValidationError(
+			`label must be ${FLIGHT_LABEL_MAX_LENGTH} characters or fewer`,
+		);
 	}
 
 	return label || null;
@@ -103,4 +141,19 @@ function parseSelectedCandidateId(value: unknown): string | null {
 	}
 
 	return selectedCandidateId;
+}
+
+function parseTodoText(value: unknown): string {
+	if (typeof value !== 'string' || !value.trim()) {
+		throw new ApiValidationError('text is required');
+	}
+
+	const text = value.trim();
+	if (text.length > TODO_TEXT_MAX_LENGTH) {
+		throw new ApiValidationError(
+			`text must be ${TODO_TEXT_MAX_LENGTH} characters or fewer`,
+		);
+	}
+
+	return text;
 }

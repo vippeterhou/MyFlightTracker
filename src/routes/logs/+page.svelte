@@ -3,6 +3,7 @@
 	import ApiUsageChart from '$lib/components/ApiUsageChart.svelte';
 	import AllRoutesMap from '$lib/components/AllRoutesMap.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import QuickTodos from '$lib/components/QuickTodos.svelte';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
 
@@ -243,6 +244,8 @@
 			{/each}
 		</div>
 	{/if}
+
+	<QuickTodos />
 </div>
 
 <style>

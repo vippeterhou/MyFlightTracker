@@ -2,6 +2,7 @@
 	import { browser } from '$app/environment';
 	import FlightCard from '$lib/components/FlightCard.svelte';
 	import PastFlightsTimeline from '$lib/components/PastFlightsTimeline.svelte';
+	import { FLIGHT_LABEL_MAX_LENGTH } from '$lib/inputLimits';
 	import type { PageData } from './$types';
 	import type { TrackedFlight } from '$lib/types';
 
@@ -145,6 +146,7 @@
 			<input bind:value={date} oninput={clearCandidates} type="date" class="input" required />
 			<input
 				bind:value={label}
+				maxlength={FLIGHT_LABEL_MAX_LENGTH}
 				placeholder="Label — optional (e.g. Mom's flight)"
 				class="input"
 			/>
