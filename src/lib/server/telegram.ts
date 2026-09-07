@@ -1,5 +1,12 @@
 const TELEGRAM_API = 'https://api.telegram.org';
 
+export function escapeTelegramHtml(value: string): string {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;');
+}
+
 export async function sendMessage(text: string): Promise<boolean> {
 	const token = process.env.TELEGRAM_BOT_TOKEN;
 	const chatId = process.env.TELEGRAM_CHAT_ID;
@@ -20,6 +27,14 @@ export async function sendMessage(text: string): Promise<boolean> {
 	}
 
 	return true;
+}
+
+export function buildTrackingStartedNotification(
+	flightId: string,
+	label?: string | null,
+): string {
+	const tag = label ? `${flightId} · ${label}` : flightId;
+	return `📋 <b>[${escapeTelegramHtml(tag)}] Tracking started</b>`;
 }
 
 export function buildNotification(
@@ -43,8 +58,11 @@ export function buildNotification(
 		baggageClaim?: string | null;
 	}
 ): string {
-	const tag = opts.label ? `${flightId} · ${opts.label}` : flightId;
-	const route = opts.from && opts.to ? `${opts.from} → ${opts.to}` : '';
+	const tag = escapeTelegramHtml(opts.label ? `${flightId} · ${opts.label}` : flightId);
+	const route =
+		opts.from && opts.to
+			? `${escapeTelegramHtml(opts.from)} → ${escapeTelegramHtml(opts.to)}`
+			: '';
 	const arrTime = opts.actualArr ?? opts.estimatedArr;
 	const depTime = opts.actualDep ?? opts.estimatedDep;
 
@@ -61,11 +79,11 @@ export function buildNotification(
 		diverted: `⚠️ <b>[${tag}] Diverted</b>`,
 	};
 
-	lines.push(headers[status] ?? `ℹ️ <b>[${tag}]</b> ${status}`);
+	lines.push(headers[status] ?? `ℹ️ <b>[${tag}]</b> ${escapeTelegramHtml(status)}`);
 
 	if (status === 'boarding') {
 		if (route) lines.push(route);
-		if (opts.gate) lines.push(`Gate ${opts.gate}`);
+		if (opts.gate) lines.push(`Gate ${escapeTelegramHtml(opts.gate)}`);
 		if (depTime) lines.push(`Departs at ${formatTime(depTime, opts.departureTz)}`);
 	} else if (status === 'departed') {
 		if (depTime) lines.push(`Departed at ${formatTime(depTime, opts.departureTz)}`);
@@ -79,7 +97,9 @@ export function buildNotification(
 		if (route) lines.push(route);
 	} else if (status === 'arrived') {
 		if (route) lines.push(route);
-		if (opts.baggageClaim) lines.push(`Baggage: ${opts.baggageClaim}`);
+		if (opts.baggageClaim) {
+			lines.push(`Baggage: ${escapeTelegramHtml(opts.baggageClaim)}`);
+		}
 		const depTime2 = opts.actualDep ?? opts.estimatedDep;
 		const actualDep = depTime2 ? formatTime(depTime2, opts.departureTz) : null;
 		const actualArr = arrTime ? formatTime(arrTime, opts.arrivalTz) : null;

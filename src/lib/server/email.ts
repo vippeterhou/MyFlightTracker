@@ -15,7 +15,11 @@ export async function sendEmail(subject: string, message: string): Promise<boole
 
 	// Notification content uses Telegram's <b> markup. Send plain text email so labels
 	// and other user-provided values are never interpreted as HTML.
-	const text = message.replace(/<\/?b>/g, '');
+	const text = message
+		.replace(/<\/?b>/g, '')
+		.replaceAll('&lt;', '<')
+		.replaceAll('&gt;', '>')
+		.replaceAll('&amp;', '&');
 	const res = await fetch(RESEND_EMAILS_API, {
 		method: 'POST',
 		headers: {

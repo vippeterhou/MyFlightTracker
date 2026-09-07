@@ -9,6 +9,7 @@ import {
 	buildNotificationSubject,
 	sendNotifications,
 } from '$lib/server/notifications';
+import { buildTrackingStartedNotification } from '$lib/server/telegram';
 import {
 	ApiValidationError,
 	parseCreateFlightInput,
@@ -72,10 +73,9 @@ export const POST: RequestHandler = async ({ request }) => {
 	});
 
 	await logger.info(`Flight added`, flight.flightId);
-	const tag = flight.label ? `${flight.flightId} · ${flight.label}` : flight.flightId;
 	sendNotifications(
 		buildNotificationSubject(flight.flightId, 'tracking-started', flight.label),
-		`📋 <b>[${tag}] Tracking started</b>`,
+		buildTrackingStartedNotification(flight.flightId, flight.label),
 		flight.flightId,
 	).catch((err: Error) =>
 		logger.warn(`Notification dispatch failed: ${err.message}`, flight.flightId)
