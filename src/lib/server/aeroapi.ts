@@ -16,12 +16,19 @@ function logApiCall(endpoint: string, flightId: string | null, durationMs: numbe
 // (applied during options.root.render) never intercepts server-side AeroAPI calls.
 const _fetch = fetch;
 
-// Rate limiter: max 10 QPM → enforce ≥6.5 s between calls
+// Rate limiter: max 10 QPM → serialize request starts ≥6.5 s apart per process.
 let _lastAeroCall = 0;
+let _aeroStartQueue: Promise<void> = Promise.resolve();
+
 async function aeroFetch(url: string, apiKey: string): Promise<Response> {
-	const gap = 6500 - (Date.now() - _lastAeroCall);
-	if (gap > 0) await new Promise((r) => setTimeout(r, gap));
-	_lastAeroCall = Date.now();
+	const start = _aeroStartQueue.then(async () => {
+		const gap = 6500 - (Date.now() - _lastAeroCall);
+		if (gap > 0) await new Promise((resolve) => setTimeout(resolve, gap));
+		_lastAeroCall = Date.now();
+	});
+	_aeroStartQueue = start;
+
+	await start;
 	return _fetch(url, { headers: { 'x-apikey': apiKey } });
 }
 
