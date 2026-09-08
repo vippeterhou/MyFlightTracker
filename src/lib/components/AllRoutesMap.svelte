@@ -134,8 +134,12 @@
 			]);
 
 			if (!mounted || !mapEl) return;
-
-			leafletInst = L.map(mapEl, { zoomSnap: 0.1 }).setView([20, 0], 2);
+			leafletInst = L.map(mapEl, {
+				zoomSnap: 0.1,
+				zoomAnimation: false,
+				wheelDebounceTime: 0,
+				wheelPxPerZoomLevel: 40,
+			}).setView([20, 0], 2);
 
 			tileLayers = {
 				default: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
