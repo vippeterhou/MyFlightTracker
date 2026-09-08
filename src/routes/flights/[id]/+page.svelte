@@ -6,6 +6,7 @@
 	import type { TrackPoint } from '$lib/server/aeroapi';
 	import { flightDateLabel } from '$lib/dateFormat';
 	import { FLIGHT_LABEL_MAX_LENGTH } from '$lib/inputLimits';
+	import { INTERACTIVE_MAP_OPTIONS } from '$lib/mapOptions';
 
 	let { data }: { data: PageData } = $props();
 	let flight = $derived(data.flight as TrackedFlight);
@@ -139,7 +140,7 @@
 
 			if (!mounted || !mapEl) return;
 
-			leafletInst = L.map(mapEl).setView([track[0].lat, track[0].lon], 5);
+			leafletInst = L.map(mapEl, INTERACTIVE_MAP_OPTIONS).setView([track[0].lat, track[0].lon], 5);
 
 			tileLayers = {
 				default: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
