@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { swipeToDelete } from '$lib/actions/swipeToDelete';
+	import SwipeDeleteIndicator from '$lib/components/SwipeDeleteIndicator.svelte';
+	import { deleteTrackedFlight } from '$lib/deleteTrackedFlight';
 	import type { TrackedFlight } from '$lib/types';
 	import { flightDateLabel } from '$lib/dateFormat';
 
@@ -51,12 +54,14 @@
 		return `${h}h ${m}m`;
 	}
 
-	async function handleDelete(e: MouseEvent) {
+	function deleteFlight(): Promise<boolean> {
+		return deleteTrackedFlight(flight, onDelete);
+	}
+
+	function handleDelete(e: MouseEvent) {
 		e.preventDefault();
 		e.stopPropagation();
-		if (!confirm(`Stop tracking ${flight.flightId}?`)) return;
-		await fetch(`/api/flights/${flight.id}`, { method: 'DELETE' });
-		onDelete(flight.id);
+		void deleteFlight();
 	}
 
 	let schedDep = $derived(fmtTime(flight.status?.scheduledDep, flight.status?.departureTz));
@@ -147,7 +152,8 @@
 </script>
 
 <div class="card-wrap">
-	<a href="/flights/{flight.id}" class="card">
+	<SwipeDeleteIndicator />
+	<a href="/flights/{flight.id}" class="card" use:swipeToDelete={{ onDelete: deleteFlight }}>
 		{#if hasTrack}
 			<div class="map-col">
 				<div class="mini-map" bind:this={mapEl}></div>
@@ -237,10 +243,6 @@
 		border-radius: 12px;
 		transition: box-shadow 0.15s;
 		cursor: pointer;
-	}
-
-	.card:hover {
-		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 	}
 
 	.map-col {
@@ -386,12 +388,40 @@
 		opacity: 0;
 	}
 
-	.card-wrap:hover .delete {
-		opacity: 1;
+	@media (hover: hover) and (pointer: fine) {
+		.card:hover {
+			box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+		}
+
+		.delete {
+			opacity: 0;
+		}
+
+		.card-wrap:hover .delete {
+			opacity: 1;
+		}
+
+		.delete:hover {
+			color: #ef4444;
+			background: rgba(239, 68, 68, 0.1);
+		}
 	}
 
-	.delete:hover {
-		color: #ef4444;
-		background: rgba(239, 68, 68, 0.1);
+	@media (hover: none), (pointer: coarse) {
+		.card-wrap {
+			overflow: hidden;
+			border-radius: 12px;
+		}
+
+		.card {
+			position: relative;
+			z-index: 1;
+			touch-action: pan-y;
+			will-change: transform;
+		}
+
+		.delete {
+			display: none;
+		}
 	}
 </style>
