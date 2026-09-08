@@ -634,6 +634,10 @@
 			padding: 16px;
 		}
 
+		.map-wrap {
+			height: clamp(240px, 70vw, 320px);
+		}
+
 		.map-header {
 			flex-direction: column;
 			align-items: stretch;

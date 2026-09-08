@@ -524,4 +524,10 @@
 	.empty {
 		color: #9ca3af;
 	}
+
+	@media (max-width: 640px) {
+		.map-placeholder {
+			height: clamp(380px, calc(70vw + 140px), 460px);
+		}
+	}
 </style>
