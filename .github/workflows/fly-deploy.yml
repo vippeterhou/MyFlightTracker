@@ -19,3 +19,10 @@ jobs:
       - run: flyctl deploy --config fly.worker.toml --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Ensure worker is running
+        run: |
+          flyctl machine list --app myflighttracker-worker --json \
+            | jq -r '.[] | select(.state == "stopped") | .id' \
+            | xargs -r flyctl machine start --app myflighttracker-worker
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
