@@ -33,7 +33,18 @@ const statusSelect = {
 	updatedAt: true,
 } as const;
 
-export const load: PageServerLoad = () => {
+const LANDING_INTRO_COOKIE = 'contrail_landing_intro_seen';
+
+export const load: PageServerLoad = ({ cookies }) => {
+	const showLandingIntro = cookies.get(LANDING_INTRO_COOKIE) !== '1';
+	if (showLandingIntro) {
+		cookies.set(LANDING_INTRO_COOKIE, '1', {
+			path: '/',
+			httpOnly: true,
+			sameSite: 'lax',
+		});
+	}
+
 	const flights = Promise.all([
 		db.trackedFlight.findMany({ include: { status: { select: statusSelect } } }),
 		db.$queryRaw<{ trackedFlightId: string }[]>`
@@ -52,5 +63,5 @@ export const load: PageServerLoad = () => {
 		return JSON.parse(JSON.stringify(flightsWithFlags));
 	});
 
-	return { flights };
+	return { flights, showLandingIntro };
 };
