@@ -3,6 +3,11 @@ export const INPUT_LIMITS = {
 	TODO_TEXT: 200,
 } as const;
 
+export const DATABASE_POOL = {
+	CONNECTION_LIMIT: 2,
+	TIMEOUT_SECONDS: 10,
+} as const;
+
 export const MAP_OPTIONS = {
 	INTERACTIVE: {
 		zoomSnap: 0.1,

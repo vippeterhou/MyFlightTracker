@@ -1,4 +1,3 @@
-import { PrismaClient } from '@prisma/client';
 import { getFlightByIdent, getFlightTrack, mapAeroStatus } from '../src/lib/server/aeroapi.js';
 import { buildNotification } from '../src/lib/server/telegram.js';
 import {
@@ -7,8 +6,7 @@ import {
 } from '../src/lib/server/notifications.js';
 import { logger } from '../src/lib/server/logger.js';
 import { POLL_SNAPSHOT } from '../src/lib/constants.js';
-
-const db = new PrismaClient();
+import { db } from '../src/lib/server/db.js';
 
 // Statuses that warrant notifications on transition
 const NOTIFY_STATUSES = new Set([

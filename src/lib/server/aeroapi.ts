@@ -1,11 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import { db } from './db';
 import { logger } from './logger';
 
 const AEROAPI_BASE = 'https://aeroapi.flightaware.com/aeroapi';
-const _db = new PrismaClient();
 
 function logApiCall(endpoint: string, flightId: string | null, durationMs: number, success: boolean, httpStatus: number | null) {
-	_db.apiCall.create({
+	db.apiCall.create({
 		data: { endpoint, flightId, durationMs, success, httpStatus },
 	}).catch((err) => {
 		console.error('[aeroapi] Failed to log API call:', err);
