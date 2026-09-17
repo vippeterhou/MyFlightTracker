@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { DATABASE_POOL } from '$lib/constants';
+import { DATABASE_POOL } from '../constants.js';
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
