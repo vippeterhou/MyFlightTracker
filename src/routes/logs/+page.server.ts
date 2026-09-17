@@ -1,5 +1,4 @@
 import { db } from '$lib/server/db';
-import { getWorkerState } from '$lib/server/flyio';
 import type { PageServerLoad } from './$types';
 
 type SerializedLog = { id: string; timestamp: string; level: string; flightId: string | null; message: string };
@@ -32,9 +31,8 @@ export interface ActiveFlight {
 const TERMINAL_STATUSES = ['arrived', 'cancelled'];
 
 export const load: PageServerLoad = async () => {
-	const [logs, workerState, incomplete, heartbeat] = await Promise.all([
+	const content = Promise.all([
 		db.pollLog.findMany({ orderBy: { timestamp: 'desc' }, take: 200 }),
-		getWorkerState(),
 		db.trackedFlight.findMany({
 			where: {
 				OR: [
@@ -64,7 +62,29 @@ export const load: PageServerLoad = async () => {
 			orderBy: { date: 'asc' },
 		}),
 		db.workerHeartbeat.findUnique({ where: { id: 'worker' } }),
-	]);
+	]).then(([logs, incomplete, heartbeat]) => {
+		const activeFlights: ActiveFlight[] = incomplete.map((f) => ({
+			id: f.id,
+			flightId: f.flightId,
+			label: f.label,
+			date: f.date.toISOString(),
+			status: f.status?.status ?? null,
+			statusChangedAt: f.status?.statusChangedAt?.toISOString() ?? null,
+			departureAirport: f.status?.departureAirport ?? null,
+			arrivalAirport: f.status?.arrivalAirport ?? null,
+			scheduledDep: f.status?.scheduledDep?.toISOString() ?? null,
+			estimatedDep: f.status?.estimatedDep?.toISOString() ?? null,
+			actualDep: f.status?.actualDep?.toISOString() ?? null,
+			scheduledArr: f.status?.scheduledArr?.toISOString() ?? null,
+			estimatedArr: f.status?.estimatedArr?.toISOString() ?? null,
+		}));
+
+		return {
+			logs: JSON.parse(JSON.stringify(logs)) as SerializedLog[],
+			activeFlights,
+			lastCheckedAt: heartbeat?.lastRunAt?.toISOString() ?? null,
+		};
+	});
 
 	// Streamed (returned unawaited): the route map pulls every flight's ~1 MB of
 	// track points, so we let the page shell + logs render first and fill the map
@@ -92,27 +112,8 @@ export const load: PageServerLoad = async () => {
 				})),
 		);
 
-	const activeFlights: ActiveFlight[] = incomplete.map((f) => ({
-		id: f.id,
-		flightId: f.flightId,
-		label: f.label,
-		date: f.date.toISOString(),
-		status: f.status?.status ?? null,
-		statusChangedAt: f.status?.statusChangedAt?.toISOString() ?? null,
-		departureAirport: f.status?.departureAirport ?? null,
-		arrivalAirport: f.status?.arrivalAirport ?? null,
-		scheduledDep: f.status?.scheduledDep?.toISOString() ?? null,
-		estimatedDep: f.status?.estimatedDep?.toISOString() ?? null,
-		actualDep: f.status?.actualDep?.toISOString() ?? null,
-		scheduledArr: f.status?.scheduledArr?.toISOString() ?? null,
-		estimatedArr: f.status?.estimatedArr?.toISOString() ?? null,
-	}));
-
 	return {
-		logs: JSON.parse(JSON.stringify(logs)) as SerializedLog[],
-		workerState,
+		content,
 		routes,
-		activeFlights,
-		lastCheckedAt: heartbeat?.lastRunAt?.toISOString() ?? null,
 	};
 };

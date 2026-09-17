@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { navigating } from '$app/stores';
 	import type { LayoutData } from './$types';
 
 	let { children, data }: { children: any; data: LayoutData } = $props();
@@ -9,22 +10,31 @@
 		workerRunning = data.workerState === 'running';
 	});
 
-	// Poll every 60s to keep the dot live between page loads
 	$effect(() => {
-		const t = setInterval(async () => {
+		let mounted = true;
+		const refresh = async () => {
 			try {
 				const res = await fetch('/api/status');
-				if (res.ok) {
+				if (mounted && res.ok) {
 					const status = await res.json();
 					workerRunning = status.workerState === 'running';
 				}
 			} catch {}
-		}, 60000);
-		return () => clearInterval(t);
+		};
+		void refresh();
+		const t = setInterval(refresh, 60000);
+		return () => {
+			mounted = false;
+			clearInterval(t);
+		};
 	});
 
 	let tooltip = $derived(workerRunning ? 'Worker running' : 'Worker stopped');
 </script>
+
+{#if $navigating}
+	<div class="navigation-progress" role="progressbar" aria-label="Loading page"></div>
+{/if}
 
 <main>
 	<header>
@@ -61,6 +71,29 @@
 	:global(a) {
 		color: inherit;
 		text-decoration: none;
+	}
+
+	.navigation-progress {
+		position: fixed;
+		inset: 0 0 auto;
+		z-index: 2000;
+		height: 3px;
+		overflow: hidden;
+		background: rgba(59, 130, 246, 0.18);
+	}
+
+	.navigation-progress::after {
+		content: '';
+		display: block;
+		width: 35%;
+		height: 100%;
+		background: #3b82f6;
+		animation: navigation-loading 0.9s ease-in-out infinite;
+	}
+
+	@keyframes navigation-loading {
+		from { transform: translateX(-100%); }
+		to { transform: translateX(385%); }
 	}
 
 	header {

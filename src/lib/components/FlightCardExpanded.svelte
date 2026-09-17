@@ -74,6 +74,8 @@
 
 	let mapEl = $state<HTMLDivElement | undefined>(undefined);
 	let miniMap: import('leaflet').Map | undefined;
+	let mapLoading = $state(false);
+	let mapError = $state(false);
 
 	function normalizeTrack(track: { lat: number; lon: number }[]): [number, number][] {
 		const unwrapped = track.reduce<[number, number][]>((acc, p) => {
@@ -102,40 +104,54 @@
 		if (!mapEl || !hasTrack) return;
 
 		let mounted = true;
+		mapLoading = true;
+		mapError = false;
 
 		(async () => {
-			const [{ default: L }, , trackRes] = await Promise.all([
-				import('leaflet'),
-				import('leaflet/dist/leaflet.css'),
-				// Track points aren't shipped with the dashboard load — fetch on demand.
-				fetch(`/api/flights/${flight.id}/track`).then((r) => (r.ok ? r.json() : { track: [] })),
-			]);
+			try {
+				const [{ default: L }, , trackRes] = await Promise.all([
+					import('leaflet'),
+					import('leaflet/dist/leaflet.css'),
+					fetch(`/api/flights/${flight.id}/track`).then((r) => {
+						if (!r.ok) throw new Error('Failed to load track');
+						return r.json();
+					}),
+				]);
 
-			const track = (trackRes.track ?? []) as { lat: number; lon: number }[];
-			if (!mounted || !mapEl || track.length < 2) return;
+				const track = (trackRes.track ?? []) as { lat: number; lon: number }[];
+				if (!mounted || !mapEl) return;
+				if (track.length < 2) {
+					mapError = true;
+					return;
+				}
 
-			miniMap = L.map(mapEl, {
-				zoomControl: false,
-				attributionControl: false,
-				dragging: false,
-				scrollWheelZoom: false,
-				doubleClickZoom: false,
-				touchZoom: false,
-				boxZoom: false,
-				keyboard: false,
-			});
+				miniMap = L.map(mapEl, {
+					zoomControl: false,
+					attributionControl: false,
+					dragging: false,
+					scrollWheelZoom: false,
+					doubleClickZoom: false,
+					touchZoom: false,
+					boxZoom: false,
+					keyboard: false,
+				});
 
-			L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-				maxZoom: 19,
-			}).addTo(miniMap);
+				L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+					maxZoom: 19,
+				}).addTo(miniMap);
 
-			const latlngs = normalizeTrack(track);
+				const latlngs = normalizeTrack(track);
 
-			L.polyline(latlngs, { color, weight: 2.5, opacity: 0.8 }).addTo(miniMap);
-			L.circleMarker(latlngs[0], { radius: 3, color, fillColor: color, fillOpacity: 1, weight: 0 }).addTo(miniMap);
-			L.circleMarker(latlngs[latlngs.length - 1], { radius: 3, color, fillColor: color, fillOpacity: 1, weight: 0 }).addTo(miniMap);
+				L.polyline(latlngs, { color, weight: 2.5, opacity: 0.8 }).addTo(miniMap);
+				L.circleMarker(latlngs[0], { radius: 3, color, fillColor: color, fillOpacity: 1, weight: 0 }).addTo(miniMap);
+				L.circleMarker(latlngs[latlngs.length - 1], { radius: 3, color, fillColor: color, fillOpacity: 1, weight: 0 }).addTo(miniMap);
 
-			miniMap.fitBounds(latlngs, { padding: [12, 12] });
+				miniMap.fitBounds(latlngs, { padding: [12, 12] });
+			} catch {
+				if (mounted) mapError = true;
+			} finally {
+				if (mounted) mapLoading = false;
+			}
 		})();
 
 		return () => {
@@ -157,6 +173,14 @@
 		{#if hasTrack}
 			<div class="map-col">
 				<div class="mini-map" bind:this={mapEl}></div>
+				{#if mapLoading}
+					<div class="map-state" aria-live="polite">
+						<span class="spinner"></span>
+						Loading route...
+					</div>
+				{:else if mapError}
+					<div class="map-state">Route unavailable</div>
+				{/if}
 			</div>
 		{/if}
 		<div class="info-col">
@@ -246,8 +270,11 @@
 	}
 
 	.map-col {
+		position: relative;
 		flex: 1;
 		min-width: 0;
+		background: #f9fafb;
+		border-radius: 11px 0 0 11px;
 	}
 
 	.mini-map {
@@ -256,6 +283,32 @@
 		border-radius: 11px 0 0 11px;
 		border-right: 1px solid #e5e7eb;
 		overflow: hidden;
+	}
+
+	.map-state {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		border-radius: 11px 0 0 11px;
+		background: #f9fafb;
+		color: #9ca3af;
+		font-size: 0.8rem;
+	}
+
+	.spinner {
+		width: 16px;
+		height: 16px;
+		border: 2px solid #e5e7eb;
+		border-top-color: #3b82f6;
+		border-radius: 50%;
+		animation: spin 0.7s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
 	}
 
 	.info-col {

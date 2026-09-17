@@ -33,23 +33,24 @@ const statusSelect = {
 	updatedAt: true,
 } as const;
 
-export const load: PageServerLoad = async () => {
-	const [flights, withTrack] = await Promise.all([
+export const load: PageServerLoad = () => {
+	const flights = Promise.all([
 		db.trackedFlight.findMany({ include: { status: { select: statusSelect } } }),
-		// Cheap existence check (no blob transfer): which flights have a drawable track.
 		db.$queryRaw<{ trackedFlightId: string }[]>`
-			SELECT "trackedFlightId"
-			FROM "FlightStatus"
-			WHERE "trackData" IS NOT NULL
-			  AND jsonb_typeof("trackData") = 'array'
-			  AND jsonb_array_length("trackData") >= 2`,
-	]);
+				SELECT "trackedFlightId"
+				FROM "FlightStatus"
+				WHERE "trackData" IS NOT NULL
+					AND jsonb_typeof("trackData") = 'array'
+					AND jsonb_array_length("trackData") >= 2`,
+	]).then(([trackedFlights, withTrack]) => {
+		const trackSet = new Set(withTrack.map((t) => t.trackedFlightId));
+		const flightsWithFlags = trackedFlights.map((f) => ({
+			...f,
+			status: f.status ? { ...f.status, hasTrack: trackSet.has(f.id) } : null,
+		}));
 
-	const trackSet = new Set(withTrack.map((t) => t.trackedFlightId));
-	const flightsWithFlags = flights.map((f) => ({
-		...f,
-		status: f.status ? { ...f.status, hasTrack: trackSet.has(f.id) } : null,
-	}));
+		return JSON.parse(JSON.stringify(flightsWithFlags));
+	});
 
-	return { flights: JSON.parse(JSON.stringify(flightsWithFlags)) };
+	return { flights };
 };

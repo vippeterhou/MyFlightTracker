@@ -6,27 +6,25 @@ import type { PageServerLoad } from './$types';
 const TRACK_FETCH_STATUSES = new Set(['airborne', 'landed', 'arrived', 'diverted']);
 
 export const load: PageServerLoad = async ({ params }) => {
-	const flight = await db.trackedFlight.findUnique({
+	const flight = db.trackedFlight.findUnique({
 		where: { id: params.id },
 		include: { status: true },
+	}).then((result) => {
+		if (!result) throw error(404, 'Flight not found');
+		return result;
 	});
 
-	if (!flight) throw error(404, 'Flight not found');
+	const serializedFlight = flight.then((result) => JSON.parse(JSON.stringify(result)));
+	const track = flight.then(async (result) => {
+		const cached = result.status?.trackData as TrackPoint[] | null;
+		if (cached && cached.length > 0) return cached;
 
-	// Use cached track data from DB if available, otherwise fetch from AeroAPI
-	const cached = flight.status?.trackData as TrackPoint[] | null;
-	let track: Promise<TrackPoint[]> | TrackPoint[];
-
-	if (cached && cached.length > 0) {
-		track = cached;
-	} else {
-		const faId = flight.status?.faFlightId;
-		if (faId && TRACK_FETCH_STATUSES.has(flight.status?.status ?? '')) {
-			track = getFlightTrack(faId, flight.flightId).catch(() => []);
-		} else {
-			track = Promise.resolve([]);
+		const faId = result.status?.faFlightId;
+		if (faId && TRACK_FETCH_STATUSES.has(result.status?.status ?? '')) {
+			return getFlightTrack(faId, result.flightId).catch(() => []);
 		}
-	}
+		return [];
+	});
 
-	return { flight: JSON.parse(JSON.stringify(flight)), track };
+	return { flight: serializedFlight, track };
 };
