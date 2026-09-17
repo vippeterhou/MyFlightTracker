@@ -12,76 +12,24 @@ export interface FlightRoute {
 	track: { lat: number; lon: number; heading: number }[];
 }
 
-export interface ActiveFlight {
-	id: string;
-	flightId: string;
-	label: string | null;
-	date: string;
-	status: string | null;
-	statusChangedAt: string | null;
-	departureAirport: string | null;
-	arrivalAirport: string | null;
-	scheduledDep: string | null;
-	estimatedDep: string | null;
-	actualDep: string | null;
-	scheduledArr: string | null;
-	estimatedArr: string | null;
-}
-
-const TERMINAL_STATUSES = ['arrived', 'cancelled'];
-
 export const load: PageServerLoad = async () => {
 	const content = Promise.all([
 		db.pollLog.findMany({ orderBy: { timestamp: 'desc' }, take: 200 }),
-		db.trackedFlight.findMany({
+		db.pollLog.findMany({
 			where: {
 				OR: [
-					{ status: { is: null } },
-					{ status: { status: { notIn: TERMINAL_STATUSES } } },
+					{ message: { startsWith: 'Poll snapshot:' } },
+					{ message: 'Flight added' },
 				],
 			},
-			select: {
-				id: true,
-				flightId: true,
-				label: true,
-				date: true,
-				status: {
-					select: {
-						status: true,
-						statusChangedAt: true,
-						departureAirport: true,
-						arrivalAirport: true,
-						scheduledDep: true,
-						estimatedDep: true,
-						actualDep: true,
-						scheduledArr: true,
-						estimatedArr: true,
-					},
-				},
-			},
-			orderBy: { date: 'asc' },
+			orderBy: { timestamp: 'desc' },
+			take: 30,
 		}),
 		db.workerHeartbeat.findUnique({ where: { id: 'worker' } }),
-	]).then(([logs, incomplete, heartbeat]) => {
-		const activeFlights: ActiveFlight[] = incomplete.map((f) => ({
-			id: f.id,
-			flightId: f.flightId,
-			label: f.label,
-			date: f.date.toISOString(),
-			status: f.status?.status ?? null,
-			statusChangedAt: f.status?.statusChangedAt?.toISOString() ?? null,
-			departureAirport: f.status?.departureAirport ?? null,
-			arrivalAirport: f.status?.arrivalAirport ?? null,
-			scheduledDep: f.status?.scheduledDep?.toISOString() ?? null,
-			estimatedDep: f.status?.estimatedDep?.toISOString() ?? null,
-			actualDep: f.status?.actualDep?.toISOString() ?? null,
-			scheduledArr: f.status?.scheduledArr?.toISOString() ?? null,
-			estimatedArr: f.status?.estimatedArr?.toISOString() ?? null,
-		}));
-
+	]).then(([logs, activity, heartbeat]) => {
 		return {
 			logs: JSON.parse(JSON.stringify(logs)) as SerializedLog[],
-			activeFlights,
+			activity: JSON.parse(JSON.stringify(activity)) as SerializedLog[],
 			lastCheckedAt: heartbeat?.lastRunAt?.toISOString() ?? null,
 		};
 	});

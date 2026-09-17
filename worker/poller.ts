@@ -17,9 +17,10 @@ const NOTIFY_STATUSES = new Set([
 const TERMINAL_STATUSES = new Set(['arrived', 'cancelled']);
 
 const HEARTBEAT_ID = 'worker';
+const POLL_SNAPSHOT_PREFIX = 'Poll snapshot:';
 
-// Stamp a liveness marker every cycle. Kept separate from PollLog so the worker
-// can prove it ran even when every flight was skipped (nothing loggable to do).
+// Stamp a dedicated liveness marker every cycle so health checks do not depend
+// on retaining or parsing poll activity logs.
 export async function recordHeartbeat(): Promise<void> {
 	await db.workerHeartbeat.upsert({
 		where: { id: HEARTBEAT_ID },
@@ -115,8 +116,12 @@ export async function pollFlightStatuses(): Promise<void> {
 		active.push(f);
 	}
 
-	if (active.length === 0) return;
+	if (active.length === 0) {
+		await logger.info(`${POLL_SNAPSHOT_PREFIX} no flights required polling`);
+		return;
+	}
 
+	const snapshot: string[] = [];
 	for (const flight of active) {
 		try {
 			const aero = await getFlightByIdent(flight.flightId, flight.date, {
@@ -127,6 +132,7 @@ export async function pollFlightStatuses(): Promise<void> {
 			});
 			if (!aero) {
 				await logger.warn('No data returned from AeroAPI', flight.flightId);
+				snapshot.push(`${flight.flightId} unavailable`);
 				continue;
 			}
 
@@ -183,7 +189,11 @@ export async function pollFlightStatuses(): Promise<void> {
 				update: statusData,
 			});
 
-			await logger.info(`Status: ${prevStatus ?? 'new'} → ${newStatus}`, flight.flightId);
+			snapshot.push(`${flight.flightId} ${newStatus}`);
+
+			if (prevStatus !== newStatus) {
+				await logger.info(`Status: ${prevStatus ?? 'new'} → ${newStatus}`, flight.flightId);
+			}
 
 			if (prevStatus !== newStatus && NOTIFY_STATUSES.has(newStatus)) {
 				const msg = buildNotification(flight.flightId, newStatus, {
@@ -211,6 +221,9 @@ export async function pollFlightStatuses(): Promise<void> {
 			}
 		} catch (err) {
 			await logger.error((err as Error).message, flight.flightId);
+			snapshot.push(`${flight.flightId} error`);
 		}
 	}
+
+	await logger.info(`${POLL_SNAPSHOT_PREFIX} ${snapshot.join(' | ')}`);
 }

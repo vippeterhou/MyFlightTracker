@@ -11,22 +11,6 @@
 		message: string;
 	}
 
-	interface ActiveFlight {
-		id: string;
-		flightId: string;
-		label: string | null;
-		date: string;
-		status: string | null;
-		statusChangedAt: string | null;
-		departureAirport: string | null;
-		arrivalAirport: string | null;
-		scheduledDep: string | null;
-		estimatedDep: string | null;
-		actualDep: string | null;
-		scheduledArr: string | null;
-		estimatedArr: string | null;
-	}
-
 	interface FlightRoute {
 		flightId: string;
 		label: string | null;
@@ -38,12 +22,12 @@
 
 	let {
 		logs,
-		activeFlights,
+		activity,
 		lastCheckedAt,
 		routes,
 	}: {
 		logs: Log[];
-		activeFlights: ActiveFlight[];
+		activity: Log[];
 		lastCheckedAt: string | null;
 		routes: Promise<FlightRoute[]>;
 	} = $props();
@@ -61,7 +45,7 @@
 		error: '#ef4444',
 	};
 
-	// Live worker state used by the active-flights indicator below. It is fetched
+	// Live worker state used by the activity-board indicator below. It is fetched
 	// after render, then refreshed by the 60s poll further down.
 	let workerState = $state('unknown');
 
@@ -97,8 +81,7 @@
 		});
 	}
 
-	// ── Active flights section ────────────────────────────────────────────────
-	// Live-ish clock so countdowns/relative times stay fresh without a reload.
+	// Live-ish clock so relative activity times stay fresh without a reload.
 	let now = $state(Date.now());
 	$effect(() => {
 		const t = setInterval(() => (now = Date.now()), 30_000);
@@ -113,19 +96,11 @@
 		landed:    '#059669',
 		delayed:   '#d97706',
 		diverted:  '#dc2626',
+		arrived:   '#10b981',
+		cancelled: '#ef4444',
+		unavailable: '#d97706',
+		error: '#ef4444',
 	};
-	const STATUS_RANK: Record<string, number> = {
-		airborne: 0, departed: 1, boarding: 2, landed: 3, delayed: 4, diverted: 5, scheduled: 6,
-	};
-
-	type Active = ActiveFlight;
-
-	function depTime(f: Active): number {
-		return Date.parse(f.estimatedDep ?? f.scheduledDep ?? f.date);
-	}
-	function hasDeparted(f: Active): boolean {
-		return !!f.actualDep || ['departed', 'airborne', 'landed', 'diverted'].includes(f.status ?? '');
-	}
 
 	function fmtDur(ms: number): string {
 		const m = Math.round(ms / 60_000);
@@ -140,38 +115,59 @@
 		return diff < 60_000 ? 'just now' : `${fmtDur(diff)} ago`;
 	}
 
-	// Primary timing line: countdown to departure before takeoff, to arrival after.
-	function timing(f: Active): string {
-		if (!hasDeparted(f)) {
-			const t = Date.parse(f.estimatedDep ?? f.scheduledDep ?? '');
-			if (!Number.isNaN(t)) return t > now ? `departs in ${fmtDur(t - now)}` : 'departure due';
-			return '';
-		}
-		const t = Date.parse(f.estimatedArr ?? f.scheduledArr ?? '');
-		if (!Number.isNaN(t) && t > now) return `arrives in ${fmtDur(t - now)}`;
-		if (f.status === 'landed') return 'landed — awaiting gate';
-		return '';
+	interface ActivityLine {
+		flightId: string | null;
+		status: string | null;
+		text: string;
 	}
 
-	// Current status paired with how long it has held (from the last transition).
-	function freshness(f: Active): string {
-		if (!f.statusChangedAt) return 'awaiting first poll';
-		const label = f.status ?? 'pending';
-		const held = now - Date.parse(f.statusChangedAt);
-		return `${label} · ${held < 60_000 ? 'just now' : fmtDur(held)}`;
+	interface ActivityEntry {
+		id: string;
+		timestamp: string;
+		lines: ActivityLine[];
 	}
 
-	let active = $derived(
-		[...activeFlights].sort((a, b) => {
-			const ra = STATUS_RANK[a.status ?? ''] ?? 7;
-			const rb = STATUS_RANK[b.status ?? ''] ?? 7;
-			return ra !== rb ? ra - rb : depTime(a) - depTime(b);
-		}),
-	);
+	let boardEntries = $derived.by((): ActivityEntry[] => {
+		return activity
+			.slice(0, 12)
+			.map((event) => {
+				if (event.message === 'Flight added') {
+					return {
+						id: event.id,
+						timestamp: event.timestamp,
+						lines: [{
+							flightId: event.flightId,
+							status: null,
+							text: event.flightId ? `${event.flightId} added` : 'Flight added',
+						}],
+					};
+				}
+
+				const snapshot = event.message.slice('Poll snapshot:'.length).trim();
+				if (snapshot === 'no flights required polling') {
+					return {
+						id: event.id,
+						timestamp: event.timestamp,
+						lines: [{ flightId: null, status: null, text: 'No active flights found' }],
+					};
+				}
+
+				return {
+					id: event.id,
+					timestamp: event.timestamp,
+					lines: snapshot.split(' | ').map((item) => {
+						const separator = item.indexOf(' ');
+						const flightId = separator === -1 ? item : item.slice(0, separator);
+						const status = separator === -1 ? 'unknown' : item.slice(separator + 1);
+						return { flightId, status, text: `${flightId} ${status}` };
+					}),
+				};
+			});
+	});
 
 	// Keep the worker state live while the page is open (e.g. an external stop or
-	// crash), mirroring the header dot's 60s cadence, so the active-flights
-	// indicator reflects reality rather than only the value from page load.
+	// crash), mirroring the header dot's 60s cadence, so the flight-activity
+	// header reflects reality rather than only the value from page load.
 	$effect(() => {
 		let mounted = true;
 		const refresh = async () => {
@@ -221,36 +217,50 @@
 		<ApiUsageChart {granularity} />
 	</div>
 
-	<div class="active-section">
-		<div class="active-header">
-			<h2>Active flights</h2>
-			<span class="active-count">{active.length}</span>
+	<div class="activity-section">
+		<div class="activity-header">
+			<div class="activity-title">
+				<div>
+					<h2>Flight activity</h2>
+					<p>Recent status updates</p>
+				</div>
+			</div>
 			{#if lastCheckedAt}
-				<span class="poll-status" class:ok={workerState === 'running'}>
-					<span class="poll-dot"></span>
-					{workerState === 'running' ? 'Worker active' : workerState === 'stopped' ? 'Worker stopped' : 'Worker unknown'} · last checked {relTime(lastCheckedAt)}
-				</span>
+				<div class="worker-health">
+					<span class="worker-badge" class:ok={workerState === 'running'}>
+						<span class="poll-dot"></span>
+						{workerState === 'running' ? 'Live' : workerState === 'stopped' ? 'Paused' : 'Unavailable'}
+					</span>
+					<span class="last-check">Updated {relTime(lastCheckedAt)}</span>
+				</div>
 			{/if}
 		</div>
-		{#if active.length === 0}
-			<p class="active-empty">No flights in progress or upcoming.</p>
+		{#if boardEntries.length === 0}
+			<div class="activity-empty">Tracking activity will appear after the next update.</div>
 		{:else}
-			<div class="active-list">
-				{#each active as f (f.id)}
-					<div class="active-row">
-						<div class="active-body">
-							<div class="line1">
-								<span class="sdot" style="background: {STATUS_COLOR[f.status ?? ''] ?? '#9ca3af'}"></span>
-								<span class="fid">{f.flightId}</span>
-								{#if f.departureAirport && f.arrivalAirport}
-									<span class="route">{f.departureAirport} → {f.arrivalAirport}</span>
-								{/if}
-								{#if f.label}<span class="flabel">{f.label}</span>{/if}
-							</div>
-							<div class="line2">
-								{#if timing(f)}<span class="timing">{timing(f)}</span>{/if}
-								{#if freshness(f)}<span class="dot">·</span><span class="fresh">{freshness(f)}</span>{/if}
-							</div>
+			<div class="activity-board">
+				{#each boardEntries as entry (entry.id)}
+					<div class="activity-row">
+						<time>{relTime(entry.timestamp)}</time>
+						<div class="activity-lines">
+							{#each entry.lines as line}
+								<div class="activity-line">
+									{#if line.status}
+										<span
+											class="activity-dot"
+											style="background: {STATUS_COLOR[line.status] ?? '#9ca3af'}"
+										></span>
+									{/if}
+									{#if line.flightId}
+										<strong>{line.flightId}</strong>
+										<span style="color: {STATUS_COLOR[line.status ?? ''] ?? '#9ca3af'}">
+											{line.text.slice(line.flightId.length).trim()}
+										</span>
+									{:else}
+										<span>{line.text}</span>
+									{/if}
+								</div>
+							{/each}
 						</div>
 					</div>
 				{/each}
@@ -302,12 +312,13 @@
 		margin-bottom: 24px;
 	}
 
-	.active-section {
+	.activity-section {
 		background: white;
 		border: 1px solid #e5e7eb;
 		border-radius: 12px;
 		padding: 16px 20px;
 		margin-bottom: 24px;
+		color: #111827;
 	}
 
 	.map-placeholder {
@@ -323,24 +334,42 @@
 		font-size: 0.9rem;
 	}
 
-	.active-header {
+	.activity-header {
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		margin-bottom: 12px;
+		justify-content: space-between;
+		gap: 16px;
+		margin-bottom: 10px;
 	}
 
-	.poll-status {
-		margin-left: auto;
+	.activity-title {
+		display: flex;
+		align-items: center;
+	}
+
+	.worker-health {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+	}
+
+	.worker-badge {
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		font-size: 0.75rem;
-		color: #9ca3af;
+		padding: 5px 9px;
+		border: 1px solid #e5e7eb;
+		border-radius: 999px;
+		background: #f9fafb;
+		color: #6b7280;
+		font-size: 0.72rem;
+		font-weight: 600;
 	}
 
-	.poll-status.ok {
-		color: #059669;
+	.worker-badge.ok {
+		border-color: #bbf7d0;
+		background: #f0fdf4;
+		color: #047857;
 	}
 
 	.poll-dot {
@@ -350,101 +379,92 @@
 		background: #d1d5db;
 	}
 
-	.poll-status.ok .poll-dot {
+	.worker-badge.ok .poll-dot {
 		background: #10b981;
 	}
 
-	.active-header h2 {
-		font-size: 0.85rem;
-		font-weight: 600;
+	.last-check {
+		color: #9ca3af;
+		font-size: 0.72rem;
+		white-space: nowrap;
+	}
+
+	.activity-header h2 {
+		font-size: 0.9rem;
+		font-weight: 700;
 		color: #374151;
 		margin: 0;
 	}
 
-	.active-count {
-		font-size: 0.7rem;
-		font-weight: 600;
+	.activity-header p {
+		margin-top: 2px;
 		color: #6b7280;
-		background: #f3f4f6;
-		border-radius: 999px;
-		padding: 1px 8px;
+		font-size: 0.72rem;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
 	}
 
-	.active-empty {
-		font-size: 0.85rem;
-		color: #9ca3af;
-		margin: 0;
+	.activity-empty {
+		padding: 28px 0 20px;
+		color: #6b7280;
+		font-family: 'SF Mono', 'Fira Code', monospace;
+		font-size: 0.8rem;
+		text-align: center;
 	}
 
-	.active-list {
+	.activity-board {
+		display: flex;
+		flex-direction: column-reverse;
+		max-height: 330px;
+		overflow: hidden;
+		font-family: 'SF Mono', 'Fira Code', monospace;
+		mask-image: linear-gradient(to bottom, transparent 0, #000 20%, #000 100%);
+	}
+
+	.activity-row {
+		display: grid;
+		grid-template-columns: 96px 1fr;
+		gap: 14px;
+		padding: 9px 4px;
+		border-top: 1px solid #f0f1f3;
+	}
+
+	.activity-row time {
+		color: #6b7280;
+		font-size: 0.72rem;
+		text-align: right;
+		white-space: nowrap;
+	}
+
+	.activity-lines {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
-	}
-
-	.active-row {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		padding: 10px 12px;
-		border: 1px solid #f0f1f3;
-		border-radius: 10px;
-	}
-
-	.sdot {
-		flex-shrink: 0;
-		width: 9px;
-		height: 9px;
-		border-radius: 50%;
-		align-self: center;
-	}
-
-	.active-body {
+		gap: 5px;
 		min-width: 0;
-		flex: 1;
 	}
 
-	.line1 {
-		display: flex;
-		align-items: baseline;
-		gap: 10px;
-		flex-wrap: wrap;
-	}
-
-	.fid {
-		font-weight: 700;
-		font-size: 0.95rem;
-		color: #111827;
-	}
-
-	.route {
-		font-size: 0.8rem;
-		color: #4b5563;
-		font-variant-numeric: tabular-nums;
-	}
-
-	.flabel {
-		font-size: 0.78rem;
-		color: #9ca3af;
-	}
-
-	.line2 {
+	.activity-line {
 		display: flex;
 		align-items: center;
-		gap: 6px;
+		gap: 7px;
 		flex-wrap: wrap;
-		margin-top: 3px;
-		font-size: 0.78rem;
-		color: #6b7280;
+		color: #9ca3af;
+		font-size: 0.8rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 	}
 
-	.timing {
-		color: #2563eb;
-		font-weight: 600;
+	.activity-line strong {
+		color: #111827;
+		font-size: 0.85rem;
+		letter-spacing: 0.06em;
 	}
 
-	.dot {
-		color: #d1d5db;
+	.activity-dot {
+		width: 7px;
+		height: 7px;
+		flex-shrink: 0;
+		border-radius: 50%;
 	}
 
 	.usage-header {
@@ -569,6 +589,20 @@
 	@media (max-width: 640px) {
 		.map-placeholder {
 			height: clamp(380px, calc(70vw + 140px), 460px);
+		}
+
+		.activity-section {
+			padding: 14px;
+		}
+
+		.activity-header {
+			align-items: center;
+			flex-wrap: wrap;
+		}
+
+		.activity-row {
+			grid-template-columns: 76px 1fr;
+			gap: 10px;
 		}
 	}
 </style>
