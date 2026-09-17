@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { TODO_TEXT_MAX_LENGTH } from '$lib/inputLimits';
+	import { INPUT_LIMITS } from '$lib/constants';
 
 	interface TodoItem {
 		id: string;
@@ -195,7 +195,7 @@
 	<form class="add-form" onsubmit={addTodo}>
 		<input
 			bind:value={draft}
-			maxlength={TODO_TEXT_MAX_LENGTH}
+			maxlength={INPUT_LIMITS.TODO_TEXT}
 			placeholder="Add an idea or reminder..."
 			aria-label="New idea"
 		/>
@@ -226,7 +226,7 @@
 					<input
 						class="todo-text"
 						value={todo.text}
-						maxlength={TODO_TEXT_MAX_LENGTH}
+						maxlength={INPUT_LIMITS.TODO_TEXT}
 						onblur={(event) => saveText(todo, event)}
 						onkeydown={finishEditing}
 						aria-label={`Edit ${todo.text}`}

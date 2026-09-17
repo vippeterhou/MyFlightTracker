@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { INTERACTIVE_MAP_OPTIONS } from '$lib/mapOptions';
+	import { MAP_OPTIONS } from '$lib/constants';
 	import { onDestroy } from 'svelte';
 
 	interface FlightRoute {
@@ -135,7 +135,7 @@
 			]);
 
 			if (!mounted || !mapEl) return;
-			leafletInst = L.map(mapEl, INTERACTIVE_MAP_OPTIONS).setView([20, 0], 2);
+			leafletInst = L.map(mapEl, MAP_OPTIONS.INTERACTIVE).setView([20, 0], 2);
 
 			tileLayers = {
 				default: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {

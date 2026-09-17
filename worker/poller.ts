@@ -6,6 +6,7 @@ import {
 	sendNotifications,
 } from '../src/lib/server/notifications.js';
 import { logger } from '../src/lib/server/logger.js';
+import { POLL_SNAPSHOT } from '../src/lib/constants.js';
 
 const db = new PrismaClient();
 
@@ -17,8 +18,6 @@ const NOTIFY_STATUSES = new Set([
 const TERMINAL_STATUSES = new Set(['arrived', 'cancelled']);
 
 const HEARTBEAT_ID = 'worker';
-const POLL_SNAPSHOT_PREFIX = 'Poll snapshot:';
-
 // Stamp a dedicated liveness marker every cycle so health checks do not depend
 // on retaining or parsing poll activity logs.
 export async function recordHeartbeat(): Promise<void> {
@@ -117,7 +116,7 @@ export async function pollFlightStatuses(): Promise<void> {
 	}
 
 	if (active.length === 0) {
-		await logger.info(`${POLL_SNAPSHOT_PREFIX} no flights required polling`);
+		await logger.info(`${POLL_SNAPSHOT.PREFIX} ${POLL_SNAPSHOT.EMPTY}`);
 		return;
 	}
 
@@ -225,5 +224,5 @@ export async function pollFlightStatuses(): Promise<void> {
 		}
 	}
 
-	await logger.info(`${POLL_SNAPSHOT_PREFIX} ${snapshot.join(' | ')}`);
+	await logger.info(`${POLL_SNAPSHOT.PREFIX} ${snapshot.join(POLL_SNAPSHOT.SEPARATOR)}`);
 }

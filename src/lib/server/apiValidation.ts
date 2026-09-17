@@ -1,7 +1,4 @@
-import {
-	FLIGHT_LABEL_MAX_LENGTH,
-	TODO_TEXT_MAX_LENGTH,
-} from '$lib/inputLimits';
+import { INPUT_LIMITS } from '$lib/constants';
 
 const FLIGHT_ID_PATTERN = /^(?=[A-Z0-9]*[A-Z])[A-Z0-9]{2,4}\d{1,4}[A-Z]?$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -117,9 +114,9 @@ function parseLabel(value: unknown, required: boolean): string | null {
 	}
 
 	const label = value.trim();
-	if (label.length > FLIGHT_LABEL_MAX_LENGTH) {
+	if (label.length > INPUT_LIMITS.FLIGHT_LABEL) {
 		throw new ApiValidationError(
-			`label must be ${FLIGHT_LABEL_MAX_LENGTH} characters or fewer`,
+			`label must be ${INPUT_LIMITS.FLIGHT_LABEL} characters or fewer`,
 		);
 	}
 
@@ -149,9 +146,9 @@ function parseTodoText(value: unknown): string {
 	}
 
 	const text = value.trim();
-	if (text.length > TODO_TEXT_MAX_LENGTH) {
+	if (text.length > INPUT_LIMITS.TODO_TEXT) {
 		throw new ApiValidationError(
-			`text must be ${TODO_TEXT_MAX_LENGTH} characters or fewer`,
+			`text must be ${INPUT_LIMITS.TODO_TEXT} characters or fewer`,
 		);
 	}
 

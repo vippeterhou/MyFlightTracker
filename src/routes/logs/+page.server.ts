@@ -1,4 +1,5 @@
 import { db } from '$lib/server/db';
+import { POLL_SNAPSHOT } from '$lib/constants';
 import type { PageServerLoad } from './$types';
 
 type SerializedLog = { id: string; timestamp: string; level: string; flightId: string | null; message: string };
@@ -18,7 +19,7 @@ export const load: PageServerLoad = async () => {
 		db.pollLog.findMany({
 			where: {
 				OR: [
-					{ message: { startsWith: 'Poll snapshot:' } },
+					{ message: { startsWith: POLL_SNAPSHOT.PREFIX } },
 					{ message: 'Flight added' },
 				],
 			},

@@ -3,8 +3,7 @@
 	import type { TrackedFlight } from '$lib/types';
 	import type { TrackPoint } from '$lib/server/aeroapi';
 	import { flightDateLabel } from '$lib/dateFormat';
-	import { FLIGHT_LABEL_MAX_LENGTH } from '$lib/inputLimits';
-	import { INTERACTIVE_MAP_OPTIONS } from '$lib/mapOptions';
+	import { INPUT_LIMITS, MAP_OPTIONS } from '$lib/constants';
 
 	let {
 		flight,
@@ -143,7 +142,7 @@
 
 			if (!mounted || !mapEl) return;
 
-			leafletInst = L.map(mapEl, INTERACTIVE_MAP_OPTIONS).setView([track[0].lat, track[0].lon], 5);
+			leafletInst = L.map(mapEl, MAP_OPTIONS.INTERACTIVE).setView([track[0].lat, track[0].lon], 5);
 
 			tileLayers = {
 				default: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -261,7 +260,7 @@
 					<input
 						class="label-input"
 						bind:value={labelDraft}
-						maxlength={FLIGHT_LABEL_MAX_LENGTH}
+						maxlength={INPUT_LIMITS.FLIGHT_LABEL}
 						onkeydown={handleLabelKey}
 						onblur={saveLabel}
 						placeholder="e.g. Mom's flight"

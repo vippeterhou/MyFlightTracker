@@ -2,6 +2,7 @@
 	import ApiUsageChart from '$lib/components/ApiUsageChart.svelte';
 	import AllRoutesMap from '$lib/components/AllRoutesMap.svelte';
 	import QuickTodos from '$lib/components/QuickTodos.svelte';
+	import { POLL_SNAPSHOT } from '$lib/constants';
 
 	interface Log {
 		id: string;
@@ -143,8 +144,8 @@
 					};
 				}
 
-				const snapshot = event.message.slice('Poll snapshot:'.length).trim();
-				if (snapshot === 'no flights required polling') {
+				const snapshot = event.message.slice(POLL_SNAPSHOT.PREFIX.length).trim();
+				if (snapshot === POLL_SNAPSHOT.EMPTY) {
 					return {
 						id: event.id,
 						timestamp: event.timestamp,
@@ -155,7 +156,7 @@
 				return {
 					id: event.id,
 					timestamp: event.timestamp,
-					lines: snapshot.split(' | ').map((item) => {
+					lines: snapshot.split(POLL_SNAPSHOT.SEPARATOR).map((item) => {
 						const separator = item.indexOf(' ');
 						const flightId = separator === -1 ? item : item.slice(0, separator);
 						const status = separator === -1 ? 'unknown' : item.slice(separator + 1);
