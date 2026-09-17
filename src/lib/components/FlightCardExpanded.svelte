@@ -312,13 +312,13 @@
 	}
 
 	.info-col {
-		flex-shrink: 0;
+		flex-shrink: 1;
 		width: 340px;
 		display: flex;
 		flex-direction: column;
 		justify-content: space-between;
 		padding: 18px 20px;
-		min-width: 0;
+		min-width: 280px;
 	}
 
 	.group-top {
