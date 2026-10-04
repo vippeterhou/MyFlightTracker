@@ -73,6 +73,12 @@ All six tables use explicit operation grants and role-specific
 policies in a reviewed migration. The runtime role has no ownership, `BYPASSRLS`,
 or access to Jiapu's tables, which share `public`. Keep migration/backup credentials
 separate; see README.md for the per-table permission matrix.
+Flight Tracker tables must also deny Supabase API roles (`PUBLIC`, `anon`,
+`authenticated`, `service_role`) access, since Jiapu's server uses `service_role`
+with RLS bypass. `prisma/restrict-supabase-api-access.sql` removes existing API
+grants. New-table migrations must revoke unwanted default API grants before
+commit and update that script's table list; do not change shared default grants
+or Jiapu objects as a shortcut.
 
 ## Environment variables
 

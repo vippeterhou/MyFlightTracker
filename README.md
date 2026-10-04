@@ -164,13 +164,24 @@ policy scoped only to this role. These policies allow the backend to access all
 application rows, while table grants restrict the allowed operations. They are
 not per-user authorization policies.
 
+For the reverse boundary, Supabase API roles (`PUBLIC`, `anon`, `authenticated`,
+and `service_role`) must have no privileges on Flight Tracker's tables. Jiapu
+uses `service_role`, whose RLS bypass would otherwise allow access despite the
+Flight Tracker-only policies. Apply the reviewed
+[`prisma/restrict-supabase-api-access.sql`](prisma/restrict-supabase-api-access.sql)
+with separately authorized owner credentials to remove those unused API grants.
+This script does not change Jiapu objects or the shared schema's default grants.
+
 The runtime role has no table ownership, role memberships, RLS bypass, or permanent
 schema-creation privileges. It has no table access to the separate Jiapu
 application's `jiapu_*` tables in the same `public` schema. Existing shared
 `PUBLIC` privileges, including temporary-table creation, are unchanged.
 
 Future application tables need explicit runtime grants and role-scoped RLS
-policies as part of their reviewed migration. Grants alone are insufficient when
+policies as part of their reviewed migration. Also revoke unwanted Supabase API
+grants in that same transaction: shared default privileges can otherwise expose
+new tables to `service_role`, which bypasses RLS. Update the isolation script's
+table list when adding an application table. Grants alone are insufficient when
 RLS is enabled. Do not disable RLS, grant `BYPASSRLS`, switch runtime credentials
 back to the owner, or grant access to all current/future tables to work around
 permission errors. Database backups and migrations must use separately authorized
