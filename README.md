@@ -144,3 +144,34 @@ requires them.
 - Review migration SQL for destructive operations and references to other
   applications' tables. Apply only approved migrations using migration credentials;
   never use `prisma db push` as a production deployment step.
+
+### Production runtime permissions
+
+The web app and worker use the dedicated `flighttracker_runtime` database login
+through the Supabase session pooler. Its credentials are stored in each Fly app's
+`DATABASE_URL` secret. Keep this runtime login separate from database-owner,
+migration, and backup credentials.
+
+| Tables | Runtime permissions |
+|---|---|
+| `TrackedFlight`, `TodoItem` | SELECT, INSERT, UPDATE, DELETE |
+| `FlightStatus`, `WorkerHeartbeat` | SELECT, INSERT, UPDATE |
+| `PollLog` | SELECT, INSERT, DELETE |
+| `ApiCall` | SELECT, INSERT |
+
+All six tables have row-level security enabled and a `flighttracker_runtime_access`
+policy scoped only to this role. These policies allow the backend to access all
+application rows, while table grants restrict the allowed operations. They are
+not per-user authorization policies.
+
+The runtime role has no table ownership, role memberships, RLS bypass, or permanent
+schema-creation privileges. It has no table access to the separate Jiapu
+application's `jiapu_*` tables in the same `public` schema. Existing shared
+`PUBLIC` privileges, including temporary-table creation, are unchanged.
+
+Future application tables need explicit runtime grants and role-scoped RLS
+policies as part of their reviewed migration. Grants alone are insufficient when
+RLS is enabled. Do not disable RLS, grant `BYPASSRLS`, switch runtime credentials
+back to the owner, or grant access to all current/future tables to work around
+permission errors. Database backups and migrations must use separately authorized
+credentials, not expanded runtime privileges.

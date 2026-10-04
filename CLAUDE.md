@@ -61,11 +61,18 @@ Two independently deployed services share one Supabase (PostgreSQL) database:
 
 ## Database
 
-Four tables: `TrackedFlight`, `FlightStatus` (1:1 with TrackedFlight, cascade delete), `PollLog`, `ApiCall`.
+Six application tables: `TrackedFlight`, `FlightStatus` (1:1 with TrackedFlight, cascade delete), `PollLog`, `ApiCall`, `WorkerHeartbeat`, `TodoItem`.
 - `FlightStatus` includes `trackData` (JSON flight route points, persisted on arrival), `departureCity`/`arrivalCity` (city names resolved from AeroAPI origin/destination).
 - `PollLog` records every poll event with `level` (info/warn/error), optional `flightId`, `message`, `timestamp`. Pruned to last 500 records automatically (`src/lib/server/logger.ts`).
 - `ApiCall` logs every AeroAPI call with `endpoint` ('status' | 'route' | 'schedule'), `flightId`, `durationMs`, `success`, `httpStatus`. Logged fire-and-forget from `aeroapi.ts`. Not auto-pruned — usage history is kept long-term. Visualized on the `/logs` page via Chart.js. The chart and its "This month" summary bucket by **UTC** (server runs UTC; client uses `getUTC*` + `timeZone: 'UTC'`).
 - All timestamps stored as ISO strings; TypeScript types in `src/lib/types.ts` reflect this (no `Date` objects in API responses).
+
+Production web and worker connect as `flighttracker_runtime`, not the database owner.
+All six tables use explicit operation grants and role-specific
+`flighttracker_runtime_access` RLS policies. New tables require both grants and
+policies in a reviewed migration. The runtime role has no ownership, `BYPASSRLS`,
+or access to Jiapu's tables, which share `public`. Keep migration/backup credentials
+separate; see README.md for the per-table permission matrix.
 
 ## Environment variables
 
