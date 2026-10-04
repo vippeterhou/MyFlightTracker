@@ -14,7 +14,7 @@ npm install
 # Generate Prisma client (required after schema changes)
 npm run db:generate
 
-# Push schema to database (dev)
+# Push schema to an isolated development database/schema only (never production)
 npm run db:push
 
 # Dev server (web app)
@@ -87,4 +87,6 @@ Pushing to `main` triggers `.github/workflows/fly-deploy.yml` which deploys both
 
 For first-time setup instructions see README.md.
 
-Web app Dockerfile runs `prisma db push` on startup (before `node build`) to apply schema changes on deploy.
+Web app Dockerfile starts with `node build` only. Neither service changes the database schema on startup.
+
+Never run `prisma db push`, `--accept-data-loss`, or `--force-reset` against production or a schema shared with another application. Production schema changes require reviewed SQL, verified backups/restoration, and separate migration credentials. This repository has no Prisma migration history yet; baseline the existing application schema safely before adopting `prisma migrate deploy`. See README.md for database isolation and migration guidance.

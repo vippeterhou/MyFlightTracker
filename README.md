@@ -61,10 +61,18 @@ cp .env.example .env
 
 ### 2. Set up database
 
+For a new, isolated development database/schema only:
+
 ```bash
 npm install
 npm run db:push
 ```
+
+Check `DATABASE_URL` before running this command. Do not use `db:push` against
+production or a schema containing another application's tables: Prisma can propose
+dropping tables that are not defined in `prisma/schema.prisma`. Never bypass these
+warnings with `--accept-data-loss` or use `--force-reset` on an existing database.
+For an existing production database, follow the database safety guidance below.
 
 ### 3. Deploy to Fly.io
 
@@ -109,3 +117,30 @@ npm run check              # [optional] pre-commit type checking and linting
 ```
 
 Pushing to `main` automatically deploys both the web app and worker via GitHub Actions.
+
+## Production database safety
+
+The web container starts with `node build`; neither service applies schema changes
+on startup. Deploying application code does not synchronize or migrate the database.
+Schema changes must be prepared and applied separately before deploying code that
+requires them.
+
+- Verify that the web app and worker target the intended Supabase project and schema.
+  Separate application repositories and table-name prefixes do not isolate tables.
+  Use a dedicated database/project, or a dedicated PostgreSQL schema and restricted
+  runtime role for this application.
+- Runtime credentials should permit only the application data operations they need,
+  not own tables or have schema-changing privileges. Use separate migration
+  credentials for approved DDL. Role changes and moving existing tables require a
+  reviewed migration plan; changing `DATABASE_URL` alone does not move existing data.
+- Before production schema changes, confirm backup/PITR availability and retention,
+  and test restoration to a separate database. Take an appropriate backup before
+  moving tables or changing schema ownership.
+- This repository does not yet have a Prisma migration history. Before adopting
+  `prisma migrate deploy`, establish a reviewed baseline of the existing application
+  schema, test it against a restored copy, and mark the baseline as applied only
+  after verifying it matches production. Do not run development migrations or reset
+  an existing production database.
+- Review migration SQL for destructive operations and references to other
+  applications' tables. Apply only approved migrations using migration credentials;
+  never use `prisma db push` as a production deployment step.
