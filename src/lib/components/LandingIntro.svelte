@@ -12,10 +12,14 @@
 	const contrailDelay = '0.08s';
 	let restoreBodyOverflow = () => {};
 
-	const handleFadeEnd = (event: AnimationEvent) => {
-		if (event.animationName !== 'intro-fade') return;
+	const dismiss = () => {
 		visible = false;
 		restoreBodyOverflow();
+	};
+
+	const handleFadeEnd = (event: AnimationEvent) => {
+		if (!finishing || event.target !== event.currentTarget) return;
+		dismiss();
 	};
 
 	onMount(() => {
@@ -40,10 +44,12 @@
 		};
 		motionEl?.addEventListener('endEvent', finish, { once: true });
 		const fallbackTimer = window.setTimeout(finish, 4000);
+		const dismissTimer = window.setTimeout(dismiss, 4500);
 
 		return () => {
 			motionEl?.removeEventListener('endEvent', finish);
 			window.clearTimeout(fallbackTimer);
+			window.clearTimeout(dismissTimer);
 			restoreBodyOverflow();
 		};
 	});
@@ -146,6 +152,7 @@
 	}
 
 	.intro.finishing {
+		pointer-events: none;
 		animation: intro-fade 0.35s ease forwards;
 	}
 
