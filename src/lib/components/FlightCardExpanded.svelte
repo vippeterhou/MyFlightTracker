@@ -5,6 +5,7 @@
 	import { deleteTrackedFlight } from '$lib/deleteTrackedFlight';
 	import type { TrackedFlight } from '$lib/types';
 	import { flightDateLabel } from '$lib/dateFormat';
+	import { MAP_TILES } from '$lib/mapTiles';
 
 	let {
 		flight,
@@ -136,8 +137,9 @@
 					keyboard: false,
 				});
 
-				L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-					maxZoom: 19,
+				L.tileLayer(MAP_TILES.DEFAULT.URL, {
+					attribution: MAP_TILES.DEFAULT.ATTRIBUTION,
+					maxZoom: MAP_TILES.DEFAULT.MAX_ZOOM,
 				}).addTo(miniMap);
 
 				const latlngs = normalizeTrack(track);

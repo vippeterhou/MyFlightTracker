@@ -4,6 +4,7 @@
 	import type { TrackPoint } from '$lib/server/aeroapi';
 	import { flightDateLabel } from '$lib/dateFormat';
 	import { INPUT_LIMITS, MAP_OPTIONS } from '$lib/constants';
+	import { MAP_TILES } from '$lib/mapTiles';
 
 	let {
 		flight,
@@ -99,17 +100,17 @@
 		{
 			id: 'default',
 			label: 'Default',
-			thumb: 'https://a.basemaps.cartocdn.com/rastertiles/voyager/2/1/1.png',
+			thumb: MAP_TILES.DEFAULT.THUMBNAIL,
 		},
 		{
 			id: 'terrain',
 			label: 'Terrain',
-			thumb: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/2/1/1',
+			thumb: MAP_TILES.TERRAIN.THUMBNAIL,
 		},
 		{
 			id: 'satellite',
 			label: 'Satellite',
-			thumb: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/2/1/1',
+			thumb: MAP_TILES.SATELLITE.THUMBNAIL,
 		},
 	];
 
@@ -145,14 +146,17 @@
 			leafletInst = L.map(mapEl, MAP_OPTIONS.INTERACTIVE).setView([track[0].lat, track[0].lon], 5);
 
 			tileLayers = {
-				default: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-					attribution: '© CARTO', maxZoom: 19,
+				default: L.tileLayer(MAP_TILES.DEFAULT.URL, {
+					attribution: MAP_TILES.DEFAULT.ATTRIBUTION,
+					maxZoom: MAP_TILES.DEFAULT.MAX_ZOOM,
 				}),
-				terrain: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
-					attribution: 'Tiles © Esri', maxZoom: 19,
+				terrain: L.tileLayer(MAP_TILES.TERRAIN.URL, {
+					attribution: MAP_TILES.TERRAIN.ATTRIBUTION,
+					maxZoom: MAP_TILES.TERRAIN.MAX_ZOOM,
 				}),
-				satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-					attribution: 'Tiles © Esri', maxZoom: 19,
+				satellite: L.tileLayer(MAP_TILES.SATELLITE.URL, {
+					attribution: MAP_TILES.SATELLITE.ATTRIBUTION,
+					maxZoom: MAP_TILES.SATELLITE.MAX_ZOOM,
 				}),
 			};
 
